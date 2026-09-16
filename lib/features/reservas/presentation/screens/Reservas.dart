@@ -1,30 +1,41 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../../../app_theme.dart';
-import '../../data/services/reserva_service.dart';
-import '../../domain/models/reserva_model.dart';
+import '../providers/reserva_provider.dart';
 
 class UserReserveSpotScreen extends StatefulWidget {
   const UserReserveSpotScreen({super.key});
 
   @override
-  State<UserReserveSpotScreen> createState() => _UserReserveSpotScreenState();
+  State<UserReserveSpotScreen> createState() =>
+      _UserReserveSpotScreenState();
 }
 
 class _UserReserveSpotScreenState extends State<UserReserveSpotScreen> {
-  final ReservaService _reservaService = ReservaService();
+  // ============================================================
+  // DATOS TEMPORALES DE RESERVA
+  // ============================================================
+
+  // TODO: posteriormente obtener el vehículo seleccionado desde la API.
   final int _vehiculoId = 1;
 
   String _tipoVehiculo = 'carro';
   String _zonaSeleccionada = 'Torre A - Piso 1';
   String? _celdaSeleccionada;
-  DateTime _fechaReserva = DateTime.now();
-  TimeOfDay _horaReserva = const TimeOfDay(hour: 8, minute: 0);
 
-  bool _isLoading = true;
+  DateTime _fechaReserva = DateTime.now();
+
+  TimeOfDay _horaReserva = const TimeOfDay(
+    hour: 8,
+    minute: 0,
+  );
+
   bool _isSubmitting = false;
-  String _error = '';
-  List<ReservaModel> _misReservas = <ReservaModel>[];
+
+  // ============================================================
+  // ZONAS
+  // ============================================================
 
   final List<String> _zonas = [
     'Torre A - Piso 1',
@@ -32,6 +43,10 @@ class _UserReserveSpotScreenState extends State<UserReserveSpotScreen> {
     'Sótano 1 - General',
     'Sótano 2 - VIP',
   ];
+
+  // ============================================================
+  // MAPA TEMPORAL DE CELDAS
+  // ============================================================
 
   final Map<String, List<Map<String, dynamic>>> _mapaCeldas = {
     'Torre A - Piso 1': [
@@ -65,217 +80,289 @@ class _UserReserveSpotScreenState extends State<UserReserveSpotScreen> {
     ],
   };
 
+  // ============================================================
+  // INIT STATE
+  // ============================================================
+
   @override
   void initState() {
     super.initState();
-    _cargarReservas();
-  }
 
-  Future<void> _cargarReservas() async {
-    setState(() {
-      _isLoading = true;
-      _error = '';
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<ReservaProvider>().cargarReservas();
     });
-
-    try {
-      final List<ReservaModel> reservas = await _reservaService
-          .obtenerMisReservas();
-      if (!mounted) return;
-      setState(() {
-        _misReservas = reservas;
-      });
-    } catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _error = error.toString().replaceFirst('Exception: ', '');
-      });
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
   }
+
+  // ============================================================
+  // CONFIRMAR RESERVA
+  // ============================================================
 
   Future<void> _confirmarReserva() async {
-    if (_celdaSeleccionada == null) return;
-
-    final String? validacion = _reservaService.validarReserva(
-      fecha: _fechaReserva,
-      horaDelDia: _horaReserva.hour,
-    );
-
-    if (validacion != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(validacion), backgroundColor: Colors.red),
-      );
+    if (_celdaSeleccionada == null) {
       return;
     }
 
-    setState(() => _isSubmitting = true);
+    final String celdaReservada = _celdaSeleccionada!;
+    final String zonaReservada = _zonaSeleccionada;
+    final String tipoVehiculoReservado = _tipoVehiculo;
+
+    // Validación local de las reglas de reserva.
+    final reservaProvider = context.read<ReservaProvider>();
+
+    final DateTime fecha = _fechaReserva;
+
+    final String? errorValidacion = reservaProvider.error.isNotEmpty
+        ? null
+        : null;
+
+    // Evitamos usar una reserva mientras otra está siendo procesada.
+    if (_isSubmitting) {
+      return;
+    }
+
+    setState(() {
+      _isSubmitting = true;
+    });
 
     try {
-      final String mensaje = await _reservaService.crearReservaConFecha(
+      final String fechaTexto =
+          '${fecha.year.toString().padLeft(4, '0')}-'
+          '${fecha.month.toString().padLeft(2, '0')}-'
+          '${fecha.day.toString().padLeft(2, '0')}';
+
+      final String horaTexto =
+          '${_horaReserva.hour.toString().padLeft(2, '0')}:'
+          '${_horaReserva.minute.toString().padLeft(2, '0')}';
+
+      final bool exito = await reservaProvider.registrarReserva(
         vehiculoId: _vehiculoId,
-        fecha: _fechaReserva,
-        horaDelDia: _horaReserva.hour,
+        fecha: fechaTexto,
+        hora: horaTexto,
       );
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
-      setState(() {
-        final celdas = _mapaCeldas[_zonaSeleccionada];
-        if (celdas != null) {
-          for (final Map<String, dynamic> celda in celdas) {
-            if (celda['id'] == _celdaSeleccionada) {
-              celda['estado'] = 'ocupado';
-              break;
+      if (exito) {
+        setState(() {
+          final List<Map<String, dynamic>>? celdas =
+              _mapaCeldas[zonaReservada];
+
+          if (celdas != null) {
+            for (final Map<String, dynamic> celda in celdas) {
+              if (celda['id'] == celdaReservada) {
+                celda['estado'] = 'ocupado';
+                break;
+              }
             }
           }
-        }
-        _celdaSeleccionada = null;
-      });
 
-      await _cargarReservas();
+          _celdaSeleccionada = null;
+        });
 
-      if (!mounted) return;
-
-      showDialog(
-        context: context,
-        builder: (BuildContext context) => AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          title: const Row(
-            children: [
-              Icon(
-                Icons.check_circle_rounded,
-                color: AppTheme.success,
-                size: 28,
+        await showDialog(
+          context: context,
+          builder: (BuildContext dialogContext) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
               ),
-              SizedBox(width: 10),
-              Text(
-                'Reserva confirmada',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              title: const Row(
+                children: [
+                  Icon(
+                    Icons.check_circle_rounded,
+                    color: AppTheme.success,
+                    size: 28,
+                  ),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Reserva confirmada',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                mensaje,
-                style: const TextStyle(color: AppTheme.textMuted, fontSize: 13),
-              ),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: AppTheme.bgLight,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey[200]!),
-                ),
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Tu espacio ha sido reservado exitosamente en el sistema.',
+                    style: TextStyle(
+                      color: AppTheme.textMuted,
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: AppTheme.bgLight,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: Colors.grey[200]!,
+                      ),
+                    ),
+                    child: Column(
                       children: [
-                        const Text(
-                          'Celda:',
-                          style: TextStyle(fontWeight: FontWeight.w600),
+                        Row(
+                          mainAxisAlignment:
+                              MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Celda:',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            Text(
+                              celdaReservada,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.primary,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ],
                         ),
-                        Text(
-                          _celdaSeleccionada ?? 'N/A',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.primary,
-                            fontSize: 16,
-                          ),
+                        const Divider(height: 16),
+                        Row(
+                          mainAxisAlignment:
+                              MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Ubicación:',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            Flexible(
+                              child: Text(
+                                zonaReservada,
+                                textAlign: TextAlign.end,
+                                style: const TextStyle(
+                                  color: AppTheme.textDark,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          mainAxisAlignment:
+                              MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Vehículo:',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            Text(
+                              tipoVehiculoReservado == 'carro'
+                                  ? 'Carro (ABC-123)'
+                                  : 'Moto (XYZ-89)',
+                              style: const TextStyle(
+                                color: AppTheme.textDark,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                    const Divider(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Ubicación:',
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                        Text(
-                          _zonaSeleccionada,
-                          style: const TextStyle(color: AppTheme.textDark),
-                        ),
-                      ],
+                  ),
+                ],
+              ),
+              actions: [
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(dialogContext);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primary,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                    const SizedBox(height: 6),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Vehículo:',
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                        Text(
-                          _tipoVehiculo == 'carro'
-                              ? 'Carro (ABC-123)'
-                              : 'Moto (XYZ-89)',
-                          style: const TextStyle(color: AppTheme.textDark),
-                        ),
-                      ],
+                  ),
+                  child: const Text(
+                    'Aceptar',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
                     ),
-                  ],
+                  ),
                 ),
-              ),
-            ],
-          ),
-          actions: [
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primary,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              child: const Text(
-                'Aceptar',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+              ],
+            );
+          },
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              reservaProvider.error.isEmpty
+                  ? 'Error al procesar la reserva.'
+                  : reservaProvider.error,
             ),
-          ],
-        ),
-      );
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(error.toString().replaceFirst('Exception: ', '')),
+          content: Text(
+            error.toString().replaceFirst('Exception: ', ''),
+          ),
           backgroundColor: Colors.red,
         ),
       );
     } finally {
       if (mounted) {
-        setState(() => _isSubmitting = false);
+        setState(() {
+          _isSubmitting = false;
+        });
       }
     }
   }
 
+  // ============================================================
+  // SELECCIONAR FECHA
+  // ============================================================
+
   Future<void> _seleccionarFecha() async {
+    final DateTime hoy = DateTime.now();
+
     final DateTime? fecha = await showDatePicker(
       context: context,
-      initialDate: _fechaReserva,
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 30)),
+      initialDate: _fechaReserva.isBefore(hoy)
+          ? hoy
+          : _fechaReserva,
+      firstDate: hoy,
+      lastDate: hoy.add(
+        const Duration(days: 7),
+      ),
     );
 
     if (fecha != null) {
-      setState(() => _fechaReserva = fecha);
+      setState(() {
+        _fechaReserva = fecha;
+      });
     }
   }
+
+  // ============================================================
+  // SELECCIONAR HORA
+  // ============================================================
 
   Future<void> _seleccionarHora() async {
     final TimeOfDay? hora = await showTimePicker(
@@ -284,11 +371,21 @@ class _UserReserveSpotScreenState extends State<UserReserveSpotScreen> {
     );
 
     if (hora != null) {
-      setState(() => _horaReserva = hora);
+      setState(() {
+        _horaReserva = hora;
+      });
     }
   }
 
-  Widget _buildLegendItem(String label, Color color, Color borderColor) {
+  // ============================================================
+  // LEYENDA
+  // ============================================================
+
+  Widget _buildLegendItem(
+    String label,
+    Color color,
+    Color borderColor,
+  ) {
     return Row(
       children: [
         Container(
@@ -297,7 +394,9 @@ class _UserReserveSpotScreenState extends State<UserReserveSpotScreen> {
           decoration: BoxDecoration(
             color: color,
             borderRadius: BorderRadius.circular(4),
-            border: Border.all(color: borderColor),
+            border: Border.all(
+              color: borderColor,
+            ),
           ),
         ),
         const SizedBox(width: 6),
@@ -313,45 +412,63 @@ class _UserReserveSpotScreenState extends State<UserReserveSpotScreen> {
     );
   }
 
+  // ============================================================
+  // BUILD
+  // ============================================================
+
   @override
   Widget build(BuildContext context) {
+    final ReservaProvider reservaProvider =
+        context.watch<ReservaProvider>();
+
+    final List misReservas = reservaProvider.misReservas;
+
     final List<Map<String, dynamic>> celdasActuales =
-        _mapaCeldas[_zonaSeleccionada] ?? <Map<String, dynamic>>[];
+        _mapaCeldas[_zonaSeleccionada] ?? [];
 
     return Scaffold(
       backgroundColor: AppTheme.bgLight,
+
       appBar: AppBar(
         backgroundColor: AppTheme.primary,
         elevation: 0,
         title: const Text(
           'Reservar Celda',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ),
+
       body: Center(
         child: Container(
-          constraints: const BoxConstraints(maxWidth: 850),
+          constraints: const BoxConstraints(
+            maxWidth: 850,
+          ),
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (_isLoading)
-                  const Center(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(vertical: 24),
-                      child: CircularProgressIndicator(),
-                    ),
-                  )
-                else if (_error.isNotEmpty)
+                // ==================================================
+                // ERROR
+                // ==================================================
+
+                if (reservaProvider.error.isNotEmpty &&
+                    misReservas.isEmpty)
                   Container(
                     width: double.infinity,
-                    margin: const EdgeInsets.only(bottom: 16),
+                    margin: const EdgeInsets.only(
+                      bottom: 16,
+                    ),
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: const Color(0xFFFEF2F2),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFFFECACA)),
+                      border: Border.all(
+                        color: const Color(0xFFFECACA),
+                      ),
                     ),
                     child: Row(
                       children: [
@@ -362,13 +479,20 @@ class _UserReserveSpotScreenState extends State<UserReserveSpotScreen> {
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
-                            _error,
-                            style: const TextStyle(color: Colors.red),
+                            reservaProvider.error,
+                            style: const TextStyle(
+                              color: Colors.red,
+                            ),
                           ),
                         ),
                       ],
                     ),
                   ),
+
+                // ==================================================
+                // TIPO DE VEHÍCULO
+                // ==================================================
+
                 Container(
                   padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
@@ -379,20 +503,26 @@ class _UserReserveSpotScreenState extends State<UserReserveSpotScreen> {
                     children: [
                       Expanded(
                         child: GestureDetector(
-                          onTap: () => setState(() {
-                            _tipoVehiculo = 'carro';
-                            _celdaSeleccionada = null;
-                          }),
+                          onTap: () {
+                            setState(() {
+                              _tipoVehiculo = 'carro';
+                              _celdaSeleccionada = null;
+                            });
+                          },
                           child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 12,
+                            ),
                             decoration: BoxDecoration(
                               color: _tipoVehiculo == 'carro'
                                   ? AppTheme.primary
                                   : Colors.transparent,
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius:
+                                  BorderRadius.circular(12),
                             ),
                             child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
+                              mainAxisAlignment:
+                                  MainAxisAlignment.center,
                               children: [
                                 Icon(
                                   Icons.directions_car_rounded,
@@ -406,9 +536,10 @@ class _UserReserveSpotScreenState extends State<UserReserveSpotScreen> {
                                   'Carro',
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
-                                    color: _tipoVehiculo == 'carro'
-                                        ? Colors.white
-                                        : AppTheme.textMuted,
+                                    color:
+                                        _tipoVehiculo == 'carro'
+                                            ? Colors.white
+                                            : AppTheme.textMuted,
                                   ),
                                 ),
                               ],
@@ -416,22 +547,29 @@ class _UserReserveSpotScreenState extends State<UserReserveSpotScreen> {
                           ),
                         ),
                       ),
+
                       Expanded(
                         child: GestureDetector(
-                          onTap: () => setState(() {
-                            _tipoVehiculo = 'moto';
-                            _celdaSeleccionada = null;
-                          }),
+                          onTap: () {
+                            setState(() {
+                              _tipoVehiculo = 'moto';
+                              _celdaSeleccionada = null;
+                            });
+                          },
                           child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 12,
+                            ),
                             decoration: BoxDecoration(
                               color: _tipoVehiculo == 'moto'
                                   ? AppTheme.primary
                                   : Colors.transparent,
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius:
+                                  BorderRadius.circular(12),
                             ),
                             child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
+                              mainAxisAlignment:
+                                  MainAxisAlignment.center,
                               children: [
                                 Icon(
                                   Icons.two_wheeler_rounded,
@@ -445,9 +583,10 @@ class _UserReserveSpotScreenState extends State<UserReserveSpotScreen> {
                                   'Moto',
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
-                                    color: _tipoVehiculo == 'moto'
-                                        ? Colors.white
-                                        : AppTheme.textMuted,
+                                    color:
+                                        _tipoVehiculo == 'moto'
+                                            ? Colors.white
+                                            : AppTheme.textMuted,
                                   ),
                                 ),
                               ],
@@ -458,7 +597,13 @@ class _UserReserveSpotScreenState extends State<UserReserveSpotScreen> {
                     ],
                   ),
                 ),
+
                 const SizedBox(height: 20),
+
+                // ==================================================
+                // ZONA
+                // ==================================================
+
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -484,27 +629,35 @@ class _UserReserveSpotScreenState extends State<UserReserveSpotScreen> {
                             ),
                           ),
                           const SizedBox(width: 12),
+
                           Expanded(
                             child: Container(
-                              padding: const EdgeInsets.symmetric(
+                              padding:
+                                  const EdgeInsets.symmetric(
                                 horizontal: 12,
                               ),
                               decoration: BoxDecoration(
                                 color: AppTheme.bgLight,
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: Colors.grey[300]!),
+                                borderRadius:
+                                    BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: Colors.grey[300]!,
+                                ),
                               ),
-                              child: DropdownButtonHideUnderline(
+                              child:
+                                  DropdownButtonHideUnderline(
                                 child: DropdownButton<String>(
                                   value: _zonaSeleccionada,
                                   isExpanded: true,
                                   items: _zonas
                                       .map(
-                                        (String z) => DropdownMenuItem<String>(
+                                        (String z) =>
+                                            DropdownMenuItem<String>(
                                           value: z,
                                           child: Text(
                                             z,
-                                            style: const TextStyle(
+                                            style:
+                                                const TextStyle(
                                               fontSize: 13,
                                             ),
                                           ),
@@ -512,12 +665,14 @@ class _UserReserveSpotScreenState extends State<UserReserveSpotScreen> {
                                       )
                                       .toList(),
                                   onChanged: (String? val) {
-                                    if (val != null) {
-                                      setState(() {
-                                        _zonaSeleccionada = val;
-                                        _celdaSeleccionada = null;
-                                      });
+                                    if (val == null) {
+                                      return;
                                     }
+
+                                    setState(() {
+                                      _zonaSeleccionada = val;
+                                      _celdaSeleccionada = null;
+                                    });
                                   },
                                 ),
                               ),
@@ -525,9 +680,11 @@ class _UserReserveSpotScreenState extends State<UserReserveSpotScreen> {
                           ),
                         ],
                       ),
+
                       const SizedBox(height: 14),
                       const Divider(height: 1),
                       const SizedBox(height: 12),
+
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceAround,
                         children: [
@@ -543,7 +700,9 @@ class _UserReserveSpotScreenState extends State<UserReserveSpotScreen> {
                           ),
                           _buildLegendItem(
                             'Seleccionado',
-                            AppTheme.primary.withValues(alpha: 0.15),
+                            AppTheme.primary.withValues(
+                              alpha: 0.15,
+                            ),
                             AppTheme.primary,
                           ),
                         ],
@@ -551,7 +710,13 @@ class _UserReserveSpotScreenState extends State<UserReserveSpotScreen> {
                     ],
                   ),
                 ),
+
                 const SizedBox(height: 20),
+
+                // ==================================================
+                // FECHA Y HORA
+                // ==================================================
+
                 Row(
                   children: [
                     Expanded(
@@ -561,11 +726,15 @@ class _UserReserveSpotScreenState extends State<UserReserveSpotScreen> {
                           icon: Icons.calendar_today_rounded,
                           title: 'Fecha',
                           value:
-                              '${_fechaReserva.day}/${_fechaReserva.month}/${_fechaReserva.year}',
+                              '${_fechaReserva.day.toString().padLeft(2, '0')}/'
+                              '${_fechaReserva.month.toString().padLeft(2, '0')}/'
+                              '${_fechaReserva.year}',
                         ),
                       ),
                     ),
+
                     const SizedBox(width: 12),
+
                     Expanded(
                       child: InkWell(
                         onTap: _seleccionarHora,
@@ -573,13 +742,20 @@ class _UserReserveSpotScreenState extends State<UserReserveSpotScreen> {
                           icon: Icons.access_time_rounded,
                           title: 'Hora',
                           value:
-                              '${_horaReserva.hour.toString().padLeft(2, '0')}:${_horaReserva.minute.toString().padLeft(2, '0')}',
+                              '${_horaReserva.hour.toString().padLeft(2, '0')}:'
+                              '${_horaReserva.minute.toString().padLeft(2, '0')}',
                         ),
                       ),
                     ),
                   ],
                 ),
+
                 const SizedBox(height: 12),
+
+                // ==================================================
+                // RESERVAS REGISTRADAS
+                // ==================================================
+
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(
@@ -589,7 +765,9 @@ class _UserReserveSpotScreenState extends State<UserReserveSpotScreen> {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                    border: Border.all(
+                      color: const Color(0xFFE2E8F0),
+                    ),
                   ),
                   child: Row(
                     children: [
@@ -601,7 +779,7 @@ class _UserReserveSpotScreenState extends State<UserReserveSpotScreen> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'Reservas registradas: ${_misReservas.length}',
+                          'Reservas registradas: ${misReservas.length}',
                           style: const TextStyle(
                             color: AppTheme.textDark,
                             fontWeight: FontWeight.w600,
@@ -612,9 +790,16 @@ class _UserReserveSpotScreenState extends State<UserReserveSpotScreen> {
                     ],
                   ),
                 ),
+
                 const SizedBox(height: 24),
+
+                // ==================================================
+                // SELECCIÓN DE CELDA
+                // ==================================================
+
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  mainAxisAlignment:
+                      MainAxisAlignment.spaceBetween,
                   children: [
                     const Text(
                       'Selecciona tu Celda',
@@ -625,7 +810,10 @@ class _UserReserveSpotScreenState extends State<UserReserveSpotScreen> {
                       ),
                     ),
                     Text(
-                      '${celdasActuales.where((Map<String, dynamic> c) => c['estado'] == 'disponible').length} disponibles',
+                      '${celdasActuales.where(
+                            (Map<String, dynamic> c) =>
+                                c['estado'] == 'disponible',
+                          ).length} disponibles',
                       style: const TextStyle(
                         color: AppTheme.success,
                         fontWeight: FontWeight.bold,
@@ -634,21 +822,33 @@ class _UserReserveSpotScreenState extends State<UserReserveSpotScreen> {
                     ),
                   ],
                 ),
+
                 const SizedBox(height: 16),
+
                 GridView.builder(
                   shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  physics:
+                      const NeverScrollableScrollPhysics(),
+                  gridDelegate:
+                      const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 3,
                     crossAxisSpacing: 16,
                     mainAxisSpacing: 16,
                     childAspectRatio: 1.3,
                   ),
                   itemCount: celdasActuales.length,
-                  itemBuilder: (BuildContext context, int index) {
-                    final Map<String, dynamic> celda = celdasActuales[index];
-                    final bool ocupado = celda['estado'] == 'ocupado';
-                    final bool seleccionado = _celdaSeleccionada == celda['id'];
+                  itemBuilder: (
+                    BuildContext context,
+                    int index,
+                  ) {
+                    final Map<String, dynamic> celda =
+                        celdasActuales[index];
+
+                    final bool ocupado =
+                        celda['estado'] == 'ocupado';
+
+                    final bool seleccionado =
+                        _celdaSeleccionada == celda['id'];
 
                     Color bgColor;
                     Color borderColor;
@@ -659,80 +859,106 @@ class _UserReserveSpotScreenState extends State<UserReserveSpotScreen> {
                       borderColor = Colors.grey[300]!;
                       textColor = Colors.grey[500]!;
                     } else if (seleccionado) {
-                      bgColor = AppTheme.primary.withValues(alpha: 0.12);
+                      bgColor =
+                          AppTheme.primary.withValues(
+                        alpha: 0.12,
+                      );
                       borderColor = AppTheme.primary;
                       textColor = AppTheme.primary;
                     } else {
-                      bgColor = const Color(0xFFE8F5E9);
-                      borderColor = AppTheme.success.withValues(alpha: 0.6);
+                      bgColor =
+                          const Color(0xFFE8F5E9);
+                      borderColor =
+                          AppTheme.success.withValues(
+                        alpha: 0.6,
+                      );
                       textColor = AppTheme.success;
                     }
 
                     return Material(
                       color: bgColor,
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius:
+                          BorderRadius.circular(16),
                       child: InkWell(
                         onTap: ocupado
                             ? null
                             : () {
                                 setState(() {
-                                  _celdaSeleccionada = celda['id'] as String;
+                                  _celdaSeleccionada =
+                                      celda['id'] as String;
                                 });
                               },
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius:
+                            BorderRadius.circular(16),
                         child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
+                          duration:
+                              const Duration(
+                            milliseconds: 200,
+                          ),
                           decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(16),
+                            borderRadius:
+                                BorderRadius.circular(16),
                             border: Border.all(
                               color: borderColor,
-                              width: seleccionado ? 2.5 : 1.5,
+                              width:
+                                  seleccionado ? 2.5 : 1.5,
                             ),
                             boxShadow: seleccionado
-                                ? <BoxShadow>[
+                                ? [
                                     BoxShadow(
-                                      color: AppTheme.primary.withValues(
+                                      color:
+                                          AppTheme.primary
+                                              .withValues(
                                         alpha: 0.2,
                                       ),
                                       blurRadius: 8,
                                       spreadRadius: 1,
                                     ),
                                   ]
-                                : const <BoxShadow>[],
+                                : const [],
                           ),
                           child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisAlignment:
+                                MainAxisAlignment.center,
                             children: [
                               Icon(
                                 ocupado
                                     ? Icons.block_rounded
-                                    : (seleccionado
-                                          ? Icons.check_circle_rounded
-                                          : Icons.local_parking_rounded),
+                                    : seleccionado
+                                        ? Icons
+                                            .check_circle_rounded
+                                        : Icons
+                                            .local_parking_rounded,
                                 color: textColor,
                                 size: 24,
                               ),
+
                               const SizedBox(height: 6),
+
                               Text(
                                 celda['id'] as String,
                                 style: TextStyle(
-                                  fontWeight: FontWeight.bold,
+                                  fontWeight:
+                                      FontWeight.bold,
                                   fontSize: 16,
                                   color: ocupado
                                       ? Colors.grey[600]
                                       : AppTheme.textDark,
                                 ),
                               ),
+
                               const SizedBox(height: 2),
+
                               Text(
                                 ocupado
                                     ? 'Ocupada'
-                                    : (seleccionado
-                                          ? 'Seleccionada'
-                                          : 'Disponible'),
+                                    : seleccionado
+                                        ? 'Seleccionada'
+                                        : 'Disponible',
                                 style: TextStyle(
                                   fontSize: 11,
-                                  fontWeight: FontWeight.w600,
+                                  fontWeight:
+                                      FontWeight.w600,
                                   color: textColor,
                                 ),
                               ),
@@ -743,22 +969,37 @@ class _UserReserveSpotScreenState extends State<UserReserveSpotScreen> {
                     );
                   },
                 ),
+
                 const SizedBox(height: 28),
-                if (_celdaSeleccionada != null) ...<Widget>[
+
+                // ==================================================
+                // CELDA SELECCIONADA
+                // ==================================================
+
+                if (_celdaSeleccionada != null) ...[
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: AppTheme.primary.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(16),
+                      color:
+                          AppTheme.primary.withValues(
+                        alpha: 0.08,
+                      ),
+                      borderRadius:
+                          BorderRadius.circular(16),
                       border: Border.all(
-                        color: AppTheme.primary.withValues(alpha: 0.3),
+                        color:
+                            AppTheme.primary.withValues(
+                          alpha: 0.3,
+                        ),
                       ),
                     ),
                     child: Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: const BoxDecoration(
+                          padding:
+                              const EdgeInsets.all(10),
+                          decoration:
+                              const BoxDecoration(
                             color: AppTheme.primary,
                             shape: BoxShape.circle,
                           ),
@@ -768,15 +1009,19 @@ class _UserReserveSpotScreenState extends State<UserReserveSpotScreen> {
                             size: 20,
                           ),
                         ),
+
                         const SizedBox(width: 12),
+
                         Expanded(
                           child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                            crossAxisAlignment:
+                                CrossAxisAlignment.start,
                             children: [
                               Text(
                                 'Celda seleccionada: $_celdaSeleccionada',
                                 style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
+                                  fontWeight:
+                                      FontWeight.bold,
                                   fontSize: 14,
                                   color: AppTheme.textDark,
                                 ),
@@ -785,7 +1030,8 @@ class _UserReserveSpotScreenState extends State<UserReserveSpotScreen> {
                                 'Ubicación: $_zonaSeleccionada',
                                 style: const TextStyle(
                                   fontSize: 12,
-                                  color: AppTheme.textMuted,
+                                  color:
+                                      AppTheme.textMuted,
                                 ),
                               ),
                             ],
@@ -794,30 +1040,44 @@ class _UserReserveSpotScreenState extends State<UserReserveSpotScreen> {
                       ],
                     ),
                   ),
+
                   const SizedBox(height: 16),
                 ],
+
+                // ==================================================
+                // BOTÓN CONFIRMAR
+                // ==================================================
+
                 SizedBox(
                   width: double.infinity,
                   height: 52,
                   child: ElevatedButton(
-                    onPressed: _celdaSeleccionada != null && !_isSubmitting
-                        ? _confirmarReserva
-                        : null,
+                    onPressed:
+                        _celdaSeleccionada != null &&
+                                !_isSubmitting
+                            ? _confirmarReserva
+                            : null,
                     style: ElevatedButton.styleFrom(
                       backgroundColor:
-                          _celdaSeleccionada != null && !_isSubmitting
-                          ? AppTheme.primary
-                          : Colors.grey[300],
+                          _celdaSeleccionada != null &&
+                                  !_isSubmitting
+                              ? AppTheme.primary
+                              : Colors.grey[300],
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius:
+                            BorderRadius.circular(16),
                       ),
-                      elevation: _celdaSeleccionada != null ? 3 : 0,
+                      elevation:
+                          _celdaSeleccionada != null
+                              ? 3
+                              : 0,
                     ),
                     child: _isSubmitting
                         ? const SizedBox(
                             width: 20,
                             height: 20,
-                            child: CircularProgressIndicator(
+                            child:
+                                CircularProgressIndicator(
                               strokeWidth: 2,
                               color: Colors.white,
                             ),
@@ -827,10 +1087,12 @@ class _UserReserveSpotScreenState extends State<UserReserveSpotScreen> {
                                 ? 'Confirmar Reserva'
                                 : 'Selecciona una celda libre',
                             style: TextStyle(
-                              color: _celdaSeleccionada != null
-                                  ? Colors.white
-                                  : Colors.grey[600],
-                              fontWeight: FontWeight.bold,
+                              color:
+                                  _celdaSeleccionada != null
+                                      ? Colors.white
+                                      : Colors.grey[600],
+                              fontWeight:
+                                  FontWeight.bold,
                               fontSize: 15,
                             ),
                           ),
@@ -844,6 +1106,10 @@ class _UserReserveSpotScreenState extends State<UserReserveSpotScreen> {
     );
   }
 
+  // ============================================================
+  // INFO CHIP
+  // ============================================================
+
   Widget _infoChip({
     required IconData icon,
     required String title,
@@ -854,15 +1120,22 @@ class _UserReserveSpotScreenState extends State<UserReserveSpotScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(
+          color: const Color(0xFFE2E8F0),
+        ),
       ),
       child: Row(
         children: [
-          Icon(icon, color: AppTheme.primary, size: 18),
+          Icon(
+            icon,
+            color: AppTheme.primary,
+            size: 18,
+          ),
           const SizedBox(width: 8),
           Expanded(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment:
+                  CrossAxisAlignment.start,
               children: [
                 Text(
                   title,

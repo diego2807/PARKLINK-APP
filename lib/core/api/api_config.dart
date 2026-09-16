@@ -6,11 +6,11 @@ class ApiConfig {
   const ApiConfig._();
 
   /// Host del servidor Flask.
-  ///
+  /// - Por esta (ideal para Web): `http://localhost:5000`
   /// - Emulador Android: `http://10.0.2.2:5000`
   /// - Emulador iOS / Web / Desktop: `http://localhost:5000`
   /// - Dispositivo físico: `http://<IP_LOCAL_DEL_PC>:5000`
-  static const String host = 'http://10.0.2.2:5000';
+  static const String host = 'http://localhost:5000';
 
   /// Prefijo común de toda la API.
   static const String apiBase = '$host/api';

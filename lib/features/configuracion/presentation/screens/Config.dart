@@ -1,22 +1,16 @@
 import 'package:flutter/material.dart';
-
-import '../../data/services/configuracion_service.dart';
-import '../../domain/models/configuracion_model.dart';
+import 'package:provider/provider.dart'; // 💡 Importante para usar el Provider
+import '../providers/configuracion_provider.dart'; // 💡 Tu nuevo provider de configuración
 
 class AdminConfigScreen extends StatefulWidget {
   const AdminConfigScreen({super.key});
 
   @override
-  State<AdminConfigScreen> createState() => _AdminConfigScreenState();
+  State createState() => _AdminConfigScreenState();
 }
 
-class _AdminConfigScreenState extends State<AdminConfigScreen> {
-  final ConfiguracionService _configService = ConfiguracionService();
-
-  bool _isLoading = true;
-  bool _isSaving = false;
-
-  // Reglas de negocio
+class _AdminConfigScreenState extends State {
+  // Reglas de negocio locales para reflejar el estado en la UI
   int _toleranciaReserva = 15; // minutos
   int _maxHorasEstadia = 10; // horas
   bool _permitirReservasFuturas = true;
@@ -34,7 +28,22 @@ class _AdminConfigScreenState extends State<AdminConfigScreen> {
   @override
   void initState() {
     super.initState();
-    _cargarConfiguracion();
+    // 💡 Cargamos la configuración global a través del provider al iniciar la vista
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _cargarConfiguracionProvider();
+    });
+  }
+
+  Future _cargarConfiguracionProvider() async {
+    final provider = context.read();
+    await provider.cargarConfiguracion();
+
+    if (provider.error.isEmpty && provider.configData.isNotEmpty) {
+      setState(() {
+        _maxHorasEstadia = provider.configData['tiempo_maximo'] ?? 10;
+        _permitirReservasFuturas = provider.configData['permitir_festivos'] ?? true;
+      });
+    }
   }
 
   @override
@@ -43,45 +52,20 @@ class _AdminConfigScreenState extends State<AdminConfigScreen> {
     super.dispose();
   }
 
-  Future<void> _cargarConfiguracion() async {
-    try {
-      final ConfiguracionModel config = await _configService
-          .obtenerConfiguracion();
-      setState(() {
-        _maxHorasEstadia = config.tiempoMaximo;
-        _permitirReservasFuturas = config.permitirFestivos;
-        _toleranciaReserva = 15;
-        _isLoading = false;
-      });
-    } catch (error) {
-      setState(() {
-        _isLoading = false;
-      });
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('No se pudo cargar la configuración: $error'),
-          backgroundColor: Colors.red,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
-  }
+  Future _guardarConfiguracion() async {
+    final provider = context.read();
 
-  Future<void> _guardarConfiguracion() async {
-    setState(() => _isSaving = true);
+    // Preparamos el payload que Flask espera según la ruta de configuración
+    final nuevosDatos = {
+      'permitir_festivos': _permitirReservasFuturas,
+      'tiempo_maximo': _maxHorasEstadia,
+    };
 
-    try {
-      final ConfiguracionModel actual = await _configService
-          .obtenerConfiguracion();
-      final ConfiguracionModel actualizado = actual.copyWith(
-        permitirFestivos: _permitirReservasFuturas,
-        tiempoMaximo: _maxHorasEstadia,
-      );
+    final exito = await provider.actualizarConfiguracion(nuevosDatos);
 
-      await _configService.actualizarConfiguracion(actualizado);
+    if (!mounted) return;
 
-      if (!mounted) return;
+    if (exito) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Row(
@@ -104,17 +88,14 @@ class _AdminConfigScreenState extends State<AdminConfigScreen> {
           ),
         ),
       );
-    } catch (error) {
-      if (!mounted) return;
+    } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('No se pudo guardar la configuración: $error'),
+          content: Text('No se pudo guardar la configuración: ${provider.error}'),
           backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
         ),
       );
-    } finally {
-      if (mounted) setState(() => _isSaving = false);
     }
   }
 
@@ -123,7 +104,10 @@ class _AdminConfigScreenState extends State<AdminConfigScreen> {
     final screenWidth = MediaQuery.of(context).size.width;
     final isDesktop = screenWidth > 900;
 
-    if (_isLoading) {
+    // 💡 Escuchamos el estado del provider global
+    final provider = context.watch();
+
+    if (provider.cargando && provider.configData.isEmpty) {
       return const Scaffold(
         backgroundColor: Color(0xFFF8FAFC),
         body: Center(child: CircularProgressIndicator()),
@@ -142,15 +126,15 @@ class _AdminConfigScreenState extends State<AdminConfigScreen> {
               if (isDesktop)
                 Row(
                   children: [
-                    Expanded(child: _buildHeaderContent()[0]),
+                    Expanded(child: _buildHeaderContent(provider.cargando)[0]),
                     const SizedBox(width: 16),
-                    _buildHeaderContent()[2],
+                    _buildHeaderContent(provider.cargando)[2],
                   ],
                 )
               else
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [..._buildHeaderContent()],
+                  children: [..._buildHeaderContent(provider.cargando)],
                 ),
               const SizedBox(height: 20),
 
@@ -230,7 +214,7 @@ class _AdminConfigScreenState extends State<AdminConfigScreen> {
     );
   }
 
-  List<Widget> _buildHeaderContent() {
+  List _buildHeaderContent(bool isSaving) {
     return [
       const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -265,8 +249,8 @@ class _AdminConfigScreenState extends State<AdminConfigScreen> {
             borderRadius: BorderRadius.circular(10),
           ),
         ),
-        onPressed: _isSaving ? null : _guardarConfiguracion,
-        icon: _isSaving
+        onPressed: isSaving ? null : _guardarConfiguracion,
+        icon: isSaving
             ? const SizedBox(
                 width: 16,
                 height: 16,
@@ -277,7 +261,7 @@ class _AdminConfigScreenState extends State<AdminConfigScreen> {
               )
             : const Icon(Icons.save_rounded, size: 18),
         label: Text(
-          _isSaving ? 'Guardando...' : 'Guardar Cambios',
+          isSaving ? 'Guardando...' : 'Guardar Cambios',
           style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
         ),
       ),
@@ -339,7 +323,7 @@ class _AdminConfigScreenState extends State<AdminConfigScreen> {
               style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
             ),
             const SizedBox(height: 8),
-            DropdownButtonFormField<int>(
+            DropdownButtonFormField(
               value: _toleranciaReserva,
               decoration: InputDecoration(
                 filled: true,
@@ -354,7 +338,7 @@ class _AdminConfigScreenState extends State<AdminConfigScreen> {
                 ),
               ),
               items: [5, 10, 15, 20, 30].map((int val) {
-                return DropdownMenuItem<int>(
+                return DropdownMenuItem(
                   value: val,
                   child: Text(
                     '$val minutos',
@@ -385,7 +369,7 @@ class _AdminConfigScreenState extends State<AdminConfigScreen> {
               style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
             ),
             const SizedBox(height: 8),
-            DropdownButtonFormField<int>(
+            DropdownButtonFormField(
               value: _maxHorasEstadia,
               decoration: InputDecoration(
                 filled: true,
@@ -400,7 +384,7 @@ class _AdminConfigScreenState extends State<AdminConfigScreen> {
                 ),
               ),
               items: [8, 10, 12, 24].map((int val) {
-                return DropdownMenuItem<int>(
+                return DropdownMenuItem(
                   value: val,
                   child: Text(
                     '$val horas',
@@ -445,7 +429,6 @@ class _AdminConfigScreenState extends State<AdminConfigScreen> {
   Widget _buildNotificationsAndSupportColumn() {
     return Column(
       children: [
-        // Card Notificaciones
         Card(
           margin: EdgeInsets.zero,
           elevation: 0,
@@ -554,8 +537,6 @@ class _AdminConfigScreenState extends State<AdminConfigScreen> {
           ),
         ),
         const SizedBox(height: 16),
-
-        // Card Soporte Técnico
         Card(
           margin: EdgeInsets.zero,
           elevation: 0,

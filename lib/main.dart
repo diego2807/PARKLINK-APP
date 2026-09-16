@@ -1,4 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart'; // 💡 Importamos el gestor de estados
+
+// ============================================================
+// PROVIDERS (TUS NUEVOS ARCHIVOS)
+// ============================================================
+import 'features/accesos/presentation/providers/acceso_provider.dart';
+import 'features/accesos/presentation/providers/visitante_provider.dart';
+import 'features/auditoria/presentation/providers/auditoria_provider.dart';
+import 'features/auth/presentation/providers/auth_provider.dart';
+import 'features/celdas_mapa/presentation/providers/celda_provider.dart';
+import 'features/configuracion/presentation/providers/configuracion_provider.dart';
+import 'features/kpis_alertas/presentation/providers/kpi_alerta_provider.dart';
+import 'features/reservas/presentation/providers/reserva_provider.dart';
+import 'features/tendencias/presentation/providers/tendencia_provider.dart';
 
 // ============================================================
 // MÓDULO DE AUTENTICACIÓN / USUARIO
@@ -18,7 +32,6 @@ import 'features/reservas/presentation/screens/Reservas.dart';
 import 'features/vehiculos/presentation/screens/VehiculosU.dart';
 import 'features/accesos/presentation/screens/Historial.dart';
 
-
 // ============================================================
 // MÓDULO DE ACCESOS / VIGILANTE
 // ============================================================
@@ -28,7 +41,6 @@ import 'features/accesos/presentation/screens/FormularioEntrada.dart';
 import 'features/accesos/presentation/screens/FormularioSalida.dart';
 import 'features/accesos/presentation/screens/FormularioVisitantes.dart';
 import 'features/accesos/presentation/screens/ListaVehiculosActivo.dart';
-
 
 // ============================================================
 // MÓDULO DE TURNOS / VIGILANTE
@@ -42,13 +54,11 @@ import 'features/turnos/presentation/screens/HistorialTurno.dart';
 import 'features/turnos/presentation/screens/RegistroNovedades.dart';
 import 'features/turnos/presentation/screens/Incidentes.dart';
 
-
 // ============================================================
 // MAPA GRÁFICO
 // ============================================================
 
 import 'features/celdas_mapa/presentation/screens/MapaGrafico.dart';
-
 
 // ============================================================
 // DASHBOARD ADMINISTRADOR
@@ -57,7 +67,6 @@ import 'features/celdas_mapa/presentation/screens/MapaGrafico.dart';
 import 'features/kpis_alertas/presentation/screens/Dashboard.dart'
     as admin_dashboard;
 
-
 // ============================================================
 // FUNCIÓN PRINCIPAL
 // ============================================================
@@ -65,7 +74,6 @@ import 'features/kpis_alertas/presentation/screens/Dashboard.dart'
 void main() {
   runApp(const MyApp());
 }
-
 
 // ============================================================
 // APLICACIÓN PRINCIPAL
@@ -76,114 +84,111 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Parklink',
+    // 💡 Aquí envolvemos toda tu app con el MultiProvider
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AccesoProvider()),
+        ChangeNotifierProvider(create: (_) => VisitanteProvider()),
+        ChangeNotifierProvider(create: (_) => AuditoriaProvider()),
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => CeldaProvider()),
+        ChangeNotifierProvider(create: (_) => ConfiguracionProvider()),
+        ChangeNotifierProvider(create: (_) => KpiAlertaProvider()),
+        ChangeNotifierProvider(create: (_) => ReservaProvider()),
+        ChangeNotifierProvider(create: (_) => TendenciaProvider()),
+      ],
+      child: MaterialApp(
+        title: 'Parklink',
 
-      // Quitar la cinta de DEBUG
-      debugShowCheckedModeBanner: false,
+        // Quitar la cinta de DEBUG
+        debugShowCheckedModeBanner: false,
 
-      // Pantalla inicial
-      initialRoute: '/login',
+        // Pantalla inicial
+        initialRoute: '/login',
 
-      // ========================================================
-      // RUTAS DE LA APLICACIÓN
-      // ========================================================
+        // ========================================================
+        // RUTAS DE LA APLICACIÓN
+        // ========================================================
 
-      routes: {
+        routes: {
+          // ------------------------------------------------------
+          // LOGIN
+          // ------------------------------------------------------
 
-        // ------------------------------------------------------
-        // LOGIN
-        // ------------------------------------------------------
+          '/login': (context) => const LoginScreen(),
 
-        '/login': (context) => const LoginScreen(),
+          // ======================================================
+          // MÓDULO DE USUARIO
+          // ======================================================
 
+          '/user/dashboard': (context) =>
+              const user_dashboard.UserDashboardScreen(),
 
-        // ======================================================
-        // MÓDULO DE USUARIO
-        // ======================================================
+          '/user/profile': (context) => const PerfilScreen(),
 
-        '/user/dashboard': (context) =>
-            const user_dashboard.UserDashboardScreen(),
+          '/user/notifications': (context) => const UserNotificationsScreen(),
 
-        '/user/profile': (context) =>
-            const PerfilScreen(),
+          '/user/help': (context) => const AyudaScreen(),
 
-        '/user/notifications': (context) =>
-            const UserNotificationsScreen(),
+          '/user/traffic-light': (context) => const UserTrafficLightScreen(),
 
-        '/user/help': (context) =>
-            const AyudaScreen(),
+          '/user/reservations': (context) => const UserReserveSpotScreen(),
 
-        '/user/traffic-light': (context) =>
-            const UserTrafficLightScreen(),
+          '/user/vehicles': (context) => const UserVehiclesScreen(),
 
-        '/user/reservations': (context) =>
-            const UserReserveSpotScreen(),
+          '/user/history': (context) => const HistorialScreen(),
 
-        '/user/vehicles': (context) =>
-            const UserVehiclesScreen(),
+          // ======================================================
+          // MÓDULO DE VIGILANTE
+          // ======================================================
 
-        '/user/history': (context) =>
-            const HistorialScreen(),
+          '/vigilante/dashboard': (context) =>
+              const admin_dashboard.AdminDashboardScreen(),
 
+          '/vigilante/inicio': (context) => const InicioScreen(),
 
-        // ======================================================
-        // MÓDULO DE VIGILANTE
-        // ======================================================
+          '/vigilante/control': (context) => const ControlScreen(),
 
-        '/vigilante/dashboard': (context) =>
-            const admin_dashboard.AdminDashboardScreen(),
+          '/vigilante/apertura-turno': (context) => const AperturaTurnoScreen(),
 
-        '/vigilante/inicio': (context) =>
-            const InicioScreen(),
+          '/vigilante/cierre-turno': (context) => const CierreTurnoScreen(),
 
-        '/vigilante/control': (context) =>
-            const ControlScreen(),
+          '/vigilante/consola-transferencia': (context) =>
+              const ConsolaTransferenciaScreen(),
 
-        '/vigilante/apertura-turno': (context) =>
-            const AperturaTurnoScreen(),
+          '/vigilante/formulario-entrada': (context) =>
+              const FormularioEntradaScreen(),
 
-        '/vigilante/cierre-turno': (context) =>
-            const CierreTurnoScreen(),
+          '/vigilante/formulario-salida': (context) =>
+              const FormularioSalidaScreen(),
 
-        '/vigilante/consola-transferencia': (context) =>
-            const ConsolaTransferenciaScreen(),
+          '/vigilante/formulario-visitantes': (context) =>
+              const FormularioVisitantesScreen(),
 
-        '/vigilante/formulario-entrada': (context) =>
-            const FormularioEntradaScreen(),
+          '/vigilante/historial-turno': (context) =>
+              const HistorialTurnoScreen(),
 
-        '/vigilante/formulario-salida': (context) =>
-            const FormularioSalidaScreen(),
+          '/vigilante/lista-vehiculos': (context) =>
+              const ListaVehiculosActivoScreen(),
 
-        '/vigilante/formulario-visitantes': (context) =>
-            const FormularioVisitantesScreen(),
+          '/vigilante/mapa-grafico': (context) => const MapaGraficoScreen(),
 
-        '/vigilante/historial-turno': (context) =>
-            const HistorialTurnoScreen(),
+          '/vigilante/registro-novedades': (context) =>
+              const RegistroNovedadesScreen(),
 
-        '/vigilante/lista-vehiculos': (context) =>
-            const ListaVehiculosActivoScreen(),
+          '/vigilante/incidencias': (context) =>
+              const VigilanteIncidentsScreen(),
 
-        '/vigilante/mapa-grafico': (context) =>
-            const MapaGraficoScreen(),
+          // ======================================================
+          // MÓDULO DE ADMINISTRADOR
+          // ======================================================
 
-        '/vigilante/registro-novedades': (context) =>
-            const RegistroNovedadesScreen(),
+          '/admin': (context) => const admin_dashboard.AdminDashboardScreen(),
 
-        '/vigilante/incidencias': (context) =>
-            const VigilanteIncidentsScreen(),
-
-
-        // ======================================================
-        // MÓDULO DE ADMINISTRADOR
-        // ======================================================
-
-        '/admin': (context) =>
-            const admin_dashboard.AdminDashboardScreen(),
-
-        '/admin/dashboard': (context) =>
-            const admin_dashboard.AdminDashboardScreen(),
-      },
+          '/admin/dashboard': (context) =>
+              const admin_dashboard.AdminDashboardScreen(),
+        },
+      ),
     );
   }
 }

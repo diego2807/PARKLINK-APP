@@ -1,21 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart'; // 💡 Única línea agregada: importamos provider
 import '../../../../app_theme.dart';
-import '../../data/services/acceso_service.dart';
+import '../providers/acceso_provider.dart'; // 💡 Importamos tu provider en lugar del servicio
 import '../../domain/models/vehiculo_activo_model.dart';
 
 class FormularioSalidaScreen extends StatefulWidget {
   const FormularioSalidaScreen({Key? key}) : super(key: key);
 
   @override
-  State<FormularioSalidaScreen> createState() => _FormularioSalidaScreenState();
+  State createState() => _FormularioSalidaScreenState();
 }
 
-class _FormularioSalidaScreenState extends State<FormularioSalidaScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final _accesoService = AccesoService();
+class _FormularioSalidaScreenState extends State {
+ final _formKey = GlobalKey<FormState>();
+  // 💡 Eliminamos final _accesoService = AccesoService(); para usar el provider
   final _placaController = TextEditingController();
 
-  Map<String, String>? _vehiculoEncontrado;
+  Map? _vehiculoEncontrado;
   bool _buscando = false;
   bool _procesandoSalida = false;
 
@@ -25,7 +26,7 @@ class _FormularioSalidaScreenState extends State<FormularioSalidaScreen> {
     super.dispose();
   }
 
-  Future<void> _buscarVehiculo() async {
+  Future _buscarVehiculo() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() {
@@ -34,8 +35,11 @@ class _FormularioSalidaScreenState extends State<FormularioSalidaScreen> {
     });
 
     try {
-      final List<VehiculoActivoModel> vehicles = await _accesoService
-          .obtenerVehiculosActivosSeguro();
+      // 💡 CAMBIO AQUÍ: Leemos la lista desde tu Provider en lugar del servicio
+      final provider = context.read();
+      await provider.cargarVehiculosActivos();
+      final List vehicles = provider.vehiculosActivos;
+      
       final String placaBuscada = _placaController.text.trim().toUpperCase();
 
       VehiculoActivoModel? encontrado;
@@ -80,17 +84,24 @@ class _FormularioSalidaScreenState extends State<FormularioSalidaScreen> {
     }
   }
 
-  Future<void> _registrarSalida() async {
+  Future _registrarSalida() async {
     if (_vehiculoEncontrado == null) return;
 
     setState(() => _procesandoSalida = true);
 
     try {
-      final resultado = await _accesoService.registrarSalida(
+      // 💡 CAMBIO AQUÍ: Enviamos la salida usando tu Provider
+      final provider = context.read();
+      final resultado = await provider.registrarSalida(
         _vehiculoEncontrado!['placa']!,
       );
 
       if (!mounted) return;
+
+      // Respetamos el manejo de errores de tus compañeros
+      if (resultado == null) {
+        throw Exception(provider.error);
+      }
 
       _placaController.clear();
       setState(() {
@@ -116,6 +127,7 @@ class _FormularioSalidaScreenState extends State<FormularioSalidaScreen> {
     }
   }
 
+  // 👇 DE AQUÍ EN ADELANTE, LA UI DE TUS COMPAÑEROS ESTÁ 100% INTACTA 👇
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -398,7 +410,6 @@ class _FormularioSalidaScreenState extends State<FormularioSalidaScreen> {
                           ],
                         ),
                         const SizedBox(height: 24),
-
                         SizedBox(
                           width: double.infinity,
                           height: 50,

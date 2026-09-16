@@ -122,7 +122,7 @@ class AccesosScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 14),
 
-                // Opciones o tarjetas de navegación internas de accesos
+                // 💡 CAMBIO AQUÍ: Activamos la navegación real hacia las pantallas con Providers
                 _buildAccessOption(
                   context,
                   icon: Icons.person_add_alt_1_rounded,
@@ -131,7 +131,7 @@ class AccesosScreen extends StatelessWidget {
                   subtitle:
                       "Ingresa datos de personas externas y vehículos temporales",
                   onTap: () {
-                    // Acción o navegación interna si aplica
+                    Navigator.pushNamed(context, '/vigilante/formulario-visitantes');
                   },
                 ),
                 const SizedBox(height: 12),
@@ -142,7 +142,9 @@ class AccesosScreen extends StatelessWidget {
                   title: "Registro de Salida",
                   subtitle:
                       "Busca la placa y libera espacios de estacionamiento ocupados",
-                  onTap: () {},
+                  onTap: () {
+                    Navigator.pushNamed(context, '/vigilante/formulario-salida');
+                  },
                 ),
                 const SizedBox(height: 12),
                 _buildAccessOption(
@@ -152,7 +154,9 @@ class AccesosScreen extends StatelessWidget {
                   title: "Vehículos Activos",
                   subtitle:
                       "Consulta el listado completo de vehículos actualmente dentro de las instalaciones",
-                  onTap: () {},
+                  onTap: () {
+                    Navigator.pushNamed(context, '/vigilante/lista-vehiculos');
+                  },
                 ),
                 const SizedBox(height: 12),
                 _buildAccessOption(
@@ -162,7 +166,9 @@ class AccesosScreen extends StatelessWidget {
                   title: "Historial de Movimientos",
                   subtitle:
                       "Revisa el registro histórico de todas las entradas y salidas registradas",
-                  onTap: () {},
+                  onTap: () {
+                    Navigator.pushNamed(context, '/user/history');
+                  },
                 ),
               ],
             ),
@@ -172,7 +178,7 @@ class AccesosScreen extends StatelessWidget {
     );
   }
 
-  // Widget auxiliar para las tarjetas de opciones
+  // Widget auxiliar para las tarjetas de opciones (UI intacta)
   Widget _buildAccessOption(
     BuildContext context, {
     required IconData icon,

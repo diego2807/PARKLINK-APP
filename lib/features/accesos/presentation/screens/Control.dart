@@ -81,21 +81,9 @@ class ControlScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 28),
 
-                const Text(
-                  "Accesos Rápidos",
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.textDark,
-                  ),
-                ),
-                const SizedBox(height: 16),
-
                 // Cuadrícula de opciones de control
                 GridView.count(
-                  crossAxisCount: MediaQuery.of(context).size.width > 600
-                      ? 2
-                      : 1,
+                  crossAxisCount: MediaQuery.of(context).size.width > 600 ? 2 : 1,
                   crossAxisSpacing: 16,
                   mainAxisSpacing: 16,
                   shrinkWrap: true,
@@ -109,14 +97,8 @@ class ControlScreen extends StatelessWidget {
                       icon: Icons.login_rounded,
                       color: Colors.green,
                       onTap: () {
-                        // Navegar o mostrar mensaje
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              "Abriendo formulario de visitantes...",
-                            ),
-                          ),
-                        );
+                        // 💡 Navegación real a FormularioEntrada.dart
+                        Navigator.pushNamed(context, '/vigilante/formulario-entrada');
                       },
                     ),
                     _buildControlCard(
@@ -126,11 +108,8 @@ class ControlScreen extends StatelessWidget {
                       icon: Icons.logout_rounded,
                       color: Colors.orange[800]!,
                       onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text("Abriendo control de salida..."),
-                          ),
-                        );
+                        // 💡 Navegación real a FormularioSalida.dart
+                        Navigator.pushNamed(context, '/vigilante/formulario-salida');
                       },
                     ),
                     _buildControlCard(
@@ -140,11 +119,8 @@ class ControlScreen extends StatelessWidget {
                       icon: Icons.directions_car_rounded,
                       color: AppTheme.primary,
                       onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text("Abriendo lista de vehículos..."),
-                          ),
-                        );
+                        // 💡 Navegación real a ListaVehiculosActivo.dart
+                        Navigator.pushNamed(context, '/vigilante/lista-vehiculos');
                       },
                     ),
                     _buildControlCard(
@@ -154,11 +130,8 @@ class ControlScreen extends StatelessWidget {
                       icon: Icons.history_rounded,
                       color: Colors.blueGrey,
                       onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text("Abriendo historial..."),
-                          ),
-                        );
+                        // 💡 Navegación a la pantalla Historial.dart que ya refactorizamos
+                        Navigator.pushNamed(context, '/user/history');
                       },
                     ),
                   ],

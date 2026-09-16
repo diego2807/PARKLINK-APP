@@ -2,15 +2,23 @@ import 'package:flutter/material.dart';
 
 import '../../data/services/alerta_service.dart';
 import '../../data/services/kpi_service.dart';
+
 import 'KPIs.dart';
 import 'Alertas.dart';
 import '../../../celdas_mapa/presentation/screens/Celdas.dart';
 import '../../../configuracion/presentation/screens/Config.dart';
 import '../../../auditoria/presentation/screens/log.dart';
 import '../../../usuarios/presentation/screens/Registro.dart';
-import '../../../tendencias/presentation/screens/Tendencias.dart';
+
+// Alias para evitar conflicto entre las pantallas de tendencias y reportes.
+import '../../../tendencias/presentation/screens/Tendencias.dart'
+    as tendencias_screen;
+
 import '../../../vehiculos/presentation/screens/Vehiculos.dart';
-import '../../../tendencias/presentation/screens/Reportes.dart';
+
+import '../../../tendencias/presentation/screens/Reportes.dart'
+    as reportes_screen;
+
 import '../../../accesos/presentation/screens/Accesos.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
@@ -25,8 +33,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   final AlertaService _alertaService = AlertaService();
 
   int _currentIndex = 3;
+
   bool _isLoading = true;
   String _error = '';
+
   int _celdasDisponibles = 0;
   int _alertasActivas = 0;
 
@@ -54,6 +64,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       });
     } catch (error) {
       if (!mounted) return;
+
       setState(() {
         _error = error.toString().replaceFirst('Exception: ', '');
       });
@@ -72,10 +83,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       const AdminAlertsScreen(),
       const AdminVehiclesScreen(),
       const AdminRegistroScreen(),
-      const AdminTendenciasScreen(),
+
+      // Tendencias.dart
+      const tendencias_screen.AdminTendenciasScreen(),
+
       const AdminLogScreen(),
       const AdminConfigScreen(),
-      const AdminReportsScreen(),
+
+      // Reportes.dart
+      reportes_screen.AdminReportsScreen(),
+
       const AccesosScreen(),
     ];
 
@@ -86,10 +103,17 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           if (!_isLoading)
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 12,
+              ),
               decoration: const BoxDecoration(
                 color: Colors.white,
-                border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
+                border: Border(
+                  bottom: BorderSide(
+                    color: Color(0xFFE2E8F0),
+                  ),
+                ),
               ),
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
@@ -108,7 +132,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         const Color(0xFFEF4444),
                       ),
                     ] else
-                      Expanded(
+                      SizedBox(
+                        width: 400,
                         child: Text(
                           _error,
                           style: const TextStyle(
@@ -129,10 +154,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 child: SizedBox(
                   width: 22,
                   height: 22,
-                  child: CircularProgressIndicator(strokeWidth: 2.5),
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.5,
+                  ),
                 ),
               ),
             ),
+
           Expanded(
             child: Row(
               children: [
@@ -156,21 +184,26 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                 });
                               },
                               labelType: NavigationRailLabelType.all,
+
                               selectedIconTheme: const IconThemeData(
                                 color: Color(0xFF3B82F6),
                               ),
+
                               selectedLabelTextStyle: const TextStyle(
                                 color: Color(0xFF3B82F6),
                                 fontWeight: FontWeight.bold,
                                 fontSize: 12,
                               ),
+
                               unselectedIconTheme: const IconThemeData(
                                 color: Color(0xFF64748B),
                               ),
+
                               unselectedLabelTextStyle: const TextStyle(
                                 color: Color(0xFF64748B),
                                 fontSize: 12,
                               ),
+
                               destinations: const [
                                 NavigationRailDestination(
                                   icon: Icon(Icons.analytics_outlined),
@@ -193,8 +226,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                   label: Text('Vehículos'),
                                 ),
                                 NavigationRailDestination(
-                                  icon: Icon(Icons.app_registration_outlined),
-                                  selectedIcon: Icon(Icons.app_registration),
+                                  icon:
+                                      Icon(Icons.app_registration_outlined),
+                                  selectedIcon:
+                                      Icon(Icons.app_registration),
                                   label: Text('Registro'),
                                 ),
                                 NavigationRailDestination(
@@ -230,11 +265,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     },
                   ),
                 ),
+
                 const VerticalDivider(
                   thickness: 1,
                   width: 1,
                   color: Color(0xFFE2E8F0),
                 ),
+
                 Expanded(
                   child: IndexedStack(
                     index: _currentIndex,
@@ -249,9 +286,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
-  Widget _summaryChip(String label, String value, Color color) {
+  Widget _summaryChip(
+    String label,
+    String value,
+    Color color,
+  ) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 10,
+        vertical: 6,
+      ),
       decoration: BoxDecoration(
         color: color.withAlpha(26),
         borderRadius: BorderRadius.circular(999),

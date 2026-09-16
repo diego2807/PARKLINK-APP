@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
 import '../../../../app_theme.dart';
-import '../../data/services/auth_service.dart';
+import '../../../../core/storage/session_storage.dart';
+import '../providers/auth_provider.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -10,10 +13,11 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final AuthService _authService = AuthService();
   final _formKey = GlobalKey<FormState>();
+
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+
   bool _obscurePassword = true;
   bool _isLoading = false;
 
@@ -30,19 +34,42 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final response = await _authService.login(
-        correo: _emailController.text,
+      // 1. Ejecutamos el login a través del AuthProvider
+      await context.read<AuthProvider>().login(
+        correo: _emailController.text.trim(),
         password: _passwordController.text,
       );
 
       if (!mounted) return;
 
-      Navigator.pushReplacementNamed(context, response.rutaInicial);
+      // 2. Evaluamos el rol real utilizando la sesión activa corporativa
+      final session = SessionStorage.instance;
+
+      String rutaDestino = '/user/dashboard';
+
+      if (session.esAdministrador) {
+        rutaDestino = '/admin/dashboard';
+      } else if (session.esVigilante) {
+        rutaDestino = '/vigilante/inicio';
+      } else if (session.esUsuario) {
+        rutaDestino = '/user/dashboard';
+      }
+
+      // 3. Redirigimos al panel correspondiente sin cruzar roles
+      Navigator.pushReplacementNamed(
+        context,
+        rutaDestino,
+      );
     } catch (e) {
       if (!mounted) return;
+
       final mensaje = e.toString().replaceFirst('Exception: ', '');
+
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(mensaje), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text(mensaje),
+          backgroundColor: Colors.red,
+        ),
       );
     } finally {
       if (mounted) {
@@ -57,17 +84,25 @@ class _LoginScreenState extends State<LoginScreen> {
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
         title: const Row(
           children: [
-            Icon(Icons.lock_reset_rounded, color: AppTheme.primary),
+            Icon(
+              Icons.lock_reset_rounded,
+              color: AppTheme.primary,
+            ),
             SizedBox(width: 8),
             Expanded(
               child: Text(
                 "Recuperar Contraseña",
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ],
@@ -79,7 +114,10 @@ class _LoginScreenState extends State<LoginScreen> {
               "Ingresa tu correo corporativo y te enviaremos las instrucciones para restablecer tu contraseña.",
               maxLines: 5,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 13, color: AppTheme.textMuted),
+              style: TextStyle(
+                fontSize: 13,
+                color: AppTheme.textMuted,
+              ),
             ),
             const SizedBox(height: 16),
             TextField(
@@ -103,22 +141,29 @@ class _LoginScreenState extends State<LoginScreen> {
             onPressed: () => Navigator.pop(dialogContext),
             child: const Text(
               "Cancelar",
-              style: TextStyle(color: AppTheme.textMuted),
+              style: TextStyle(
+                color: AppTheme.textMuted,
+              ),
             ),
           ),
           ElevatedButton(
             onPressed: () {
               final correo = recuperarCtrl.text.trim();
+
               if (correo.isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text("Por favor ingresa un correo válido."),
+                    content: Text(
+                      "Por favor ingresa un correo válido.",
+                    ),
                     backgroundColor: AppTheme.accent,
                   ),
                 );
                 return;
               }
+
               Navigator.pop(dialogContext);
+
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text(
@@ -155,7 +200,10 @@ class _LoginScreenState extends State<LoginScreen> {
         height: double.infinity,
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [AppTheme.primaryDark, AppTheme.primary],
+            colors: [
+              AppTheme.primaryDark,
+              AppTheme.primary,
+            ],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
@@ -167,8 +215,9 @@ class _LoginScreenState extends State<LoginScreen> {
               vertical: 40.0,
             ),
             child: Container(
-              // Limita el ancho máximo para evitar que se distorsione en web
-              constraints: const BoxConstraints(maxWidth: 420),
+              constraints: const BoxConstraints(
+                maxWidth: 420,
+              ),
               padding: const EdgeInsets.all(36.0),
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -186,7 +235,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Icono de la marca
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
@@ -199,9 +247,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         color: AppTheme.primary,
                       ),
                     ),
+
                     const SizedBox(height: 20),
 
-                    // Título y Subtítulo
                     const Text(
                       "Parklink",
                       style: TextStyle(
@@ -211,16 +259,21 @@ class _LoginScreenState extends State<LoginScreen> {
                         letterSpacing: 0.5,
                       ),
                     ),
+
                     const SizedBox(height: 6),
+
                     const Text(
                       "Gestión de Parqueaderos Redeban",
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 14, color: AppTheme.textMuted),
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: AppTheme.textMuted,
+                      ),
                     ),
+
                     const SizedBox(height: 32),
 
-                    // Campo de Correo
                     TextFormField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
@@ -236,19 +289,21 @@ class _LoginScreenState extends State<LoginScreen> {
                         if (value == null || value.trim().isEmpty) {
                           return "Ingresa tu correo";
                         }
-                        // Validación de formato de correo básico
+
                         final emailRegExp = RegExp(
-                          r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                          r'^[\w\-.]+@([\w-]+\.)+[\w-]{2,4}$',
                         );
+
                         if (!emailRegExp.hasMatch(value.trim())) {
                           return "Ingresa un correo electrónico válido";
                         }
+
                         return null;
                       },
                     ),
+
                     const SizedBox(height: 18),
 
-                    // Campo de Contraseña
                     TextFormField(
                       controller: _passwordController,
                       obscureText: _obscurePassword,
@@ -256,35 +311,35 @@ class _LoginScreenState extends State<LoginScreen> {
                         fontSize: 15,
                         color: AppTheme.textDark,
                       ),
-                      decoration:
-                          AppTheme.inputStyle(
-                            "Contraseña",
-                            Icons.lock_outline,
-                          ).copyWith(
-                            suffixIcon: IconButton(
-                              icon: Icon(
-                                _obscurePassword
-                                    ? Icons.visibility_off
-                                    : Icons.visibility,
-                                color: AppTheme.textMuted,
-                              ),
-                              onPressed: () {
-                                setState(
-                                  () => _obscurePassword = !_obscurePassword,
-                                );
-                              },
-                            ),
+                      decoration: AppTheme.inputStyle(
+                        "Contraseña",
+                        Icons.lock_outline,
+                      ).copyWith(
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscurePassword
+                                ? Icons.visibility_off
+                                : Icons.visibility,
+                            color: AppTheme.textMuted,
                           ),
+                          onPressed: () {
+                            setState(
+                              () => _obscurePassword = !_obscurePassword,
+                            );
+                          },
+                        ),
+                      ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return "Ingresa tu contraseña";
                         }
+
                         return null;
                       },
                     ),
+
                     const SizedBox(height: 10),
 
-                    // Opción de recuperación conectada
                     Align(
                       alignment: Alignment.centerRight,
                       child: TextButton(
@@ -299,9 +354,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                     ),
+
                     const SizedBox(height: 24),
 
-                    // Botón de Iniciar Sesión
                     SizedBox(
                       width: double.infinity,
                       height: 52,
@@ -310,7 +365,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppTheme.primary,
                           elevation: 3,
-                          shadowColor: AppTheme.primary.withValues(alpha: 0.4),
+                          shadowColor:
+                              AppTheme.primary.withValues(alpha: 0.4),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14),
                           ),

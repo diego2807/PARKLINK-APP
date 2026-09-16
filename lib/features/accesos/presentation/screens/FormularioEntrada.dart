@@ -1,34 +1,34 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../../app_theme.dart';
-import '../../data/services/acceso_service.dart';
+import '../providers/acceso_provider.dart';
 
 class FormularioEntradaScreen extends StatefulWidget {
   const FormularioEntradaScreen({super.key});
 
   @override
-  State<FormularioEntradaScreen> createState() =>
+  State createState() =>
       _FormularioEntradaScreenState();
 }
 
-class _FormularioEntradaScreenState extends State<FormularioEntradaScreen> {
+class _FormularioEntradaScreenState extends State {
   final _formKey = GlobalKey<FormState>();
-  final _accesoService = AccesoService();
-  final _placaController = TextEditingController();
-  final _conductorController = TextEditingController();
+  final TextEditingController _placaController = TextEditingController();
+  final TextEditingController _conductorController = TextEditingController();
 
   String _tipoVehiculo = "Carro";
   String _zona = "Torre A - Piso 1";
   String? _celda = "A-03";
   bool _cargando = false;
 
-  final List<String> _zonas = [
+  final List _zonas = [
     "Torre A - Piso 1",
     "Torre A - Piso 2",
     "Sótano 1 - General",
     "Sótano 2 - VIP",
   ];
 
-  final Map<String, List<String>> _celdasDisponibles = {
+  final Map _celdasDisponibles = {
     "Torre A - Piso 1": ["A-01", "A-03", "A-04", "A-06", "A-08", "A-09"],
     "Torre A - Piso 2": ["B-03", "B-04", "B-05"],
     "Sótano 1 - General": ["S1-01", "S1-02", "S1-04"],
@@ -42,17 +42,18 @@ class _FormularioEntradaScreenState extends State<FormularioEntradaScreen> {
     super.dispose();
   }
 
-  void _onZonaChanged(String? nuevaZona) {
+  // 💡 Función adaptada para evitar errores de tipos en el Dropdown
+  void _onZonaChanged(Object? nuevaZona) {
     if (nuevaZona == null) return;
     setState(() {
-      _zona = nuevaZona;
+      _zona = nuevaZona.toString();
       final celdas = _celdasDisponibles[_zona] ?? [];
       _celda = celdas.isNotEmpty ? celdas.first : null;
     });
   }
 
-  Future<void> _registrarEntrada() async {
-    if (!_formKey.currentState!.validate()) return;
+  Future _registrarEntrada() async {
+    if (_formKey.currentState == null || !_formKey.currentState!.validate()) return;
     if (_celda == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("No hay celdas disponibles en esta zona")),
@@ -63,11 +64,16 @@ class _FormularioEntradaScreenState extends State<FormularioEntradaScreen> {
     setState(() => _cargando = true);
 
     try {
-      final resultado = await _accesoService.registrarEntrada(
+      final provider = context.read();
+      final resultado = await provider.registrarEntrada(
         _placaController.text.trim(),
       );
 
       if (!mounted) return;
+
+      if (resultado == null) {
+        throw Exception(provider.error);
+      }
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -104,7 +110,7 @@ class _FormularioEntradaScreenState extends State<FormularioEntradaScreen> {
             ],
           ),
           content: Text(
-            "Vehículo ${_placaController.text.trim().toUpperCase()} asignado a la celda $_celda.",
+            "Vehículo \({_placaController.text.trim().toUpperCase()} asignado a la celda\)_celda.",
           ),
           actions: [
             ElevatedButton(
@@ -262,7 +268,7 @@ class _FormularioEntradaScreenState extends State<FormularioEntradaScreen> {
                       },
                     ),
                     const SizedBox(height: 14),
-                    DropdownButtonFormField<String>(
+                    DropdownButtonFormField(
                       value: _zona,
                       decoration: AppTheme.inputStyle(
                         "Zona",
@@ -282,7 +288,7 @@ class _FormularioEntradaScreenState extends State<FormularioEntradaScreen> {
                       onChanged: _onZonaChanged,
                     ),
                     const SizedBox(height: 14),
-                    DropdownButtonFormField<String>(
+                    DropdownButtonFormField(
                       value: celdas.contains(_celda) ? _celda : null,
                       decoration: AppTheme.inputStyle(
                         "Celda asignada",

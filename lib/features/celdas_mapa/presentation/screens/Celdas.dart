@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../providers/celda_provider.dart';
 import '../../data/services/celda_service.dart';
 
 class AdminSpotsScreen extends StatefulWidget {
@@ -11,67 +13,41 @@ class AdminSpotsScreen extends StatefulWidget {
 
 class _AdminSpotsScreenState extends State<AdminSpotsScreen> {
   final CeldaService _celdaService = CeldaService();
-  String _selectedFilter = 'Todas';
-  bool _isLoading = true;
-  String? _errorMessage;
 
-  List<Map<String, dynamic>> _spots = <Map<String, dynamic>>[];
+  String _selectedFilter = 'Todas';
 
   @override
   void initState() {
     super.initState();
-    _loadSpots();
-  }
 
-  Future<void> _loadSpots() async {
-    try {
-      final celdas = await _celdaService.obtenerCeldas();
-      setState(() {
-        _spots = celdas.map((celda) {
-          return <String, dynamic>{
-            'id': celda.codigoCelda,
-            'zone': celda.zona,
-            'type': celda.tipoEtiqueta,
-            'status': celda.ocupada ? 'Ocupado' : 'Disponible',
-            'plate': null,
-            'celdaId': celda.id,
-          };
-        }).toList();
-        _isLoading = false;
-        _errorMessage = null;
-      });
-    } catch (error) {
-      setState(() {
-        _isLoading = false;
-        _errorMessage = error.toString();
-      });
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<CeldaProvider>().cargarCeldas();
+    });
   }
 
   String _tipoCeldaBackend(String valor) {
     switch (valor.toLowerCase()) {
       case 'administrativas':
         return 'administrativas';
+
       case 'eléctricos':
       case 'electricos':
         return 'eléctricos';
+
       case 'movilidad':
       case 'movilidad reducida':
         return 'movilidad';
+
       case 'operativas':
       default:
         return 'operativas';
     }
   }
 
-  List<Map<String, dynamic>> get _filteredSpots {
-    if (_selectedFilter == 'Todas') return _spots;
-    return _spots.where((s) => s['status'] == _selectedFilter).toList();
-  }
-
   void _showAddSpotDialog() {
     final formKey = GlobalKey<FormState>();
     final idController = TextEditingController();
+
     String selectedZone = 'A';
     String selectedType = 'Operativas';
 
@@ -93,7 +69,9 @@ class _AdminSpotsScreenState extends State<AdminSpotsScreen> {
                   SizedBox(width: 8),
                   Text(
                     'Agregar Nueva Celda',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ],
               ),
@@ -114,10 +92,13 @@ class _AdminSpotsScreenState extends State<AdminSpotsScreen> {
                           if (value == null || value.trim().isEmpty) {
                             return 'Ingresa el identificador de la celda';
                           }
+
                           return null;
                         },
                       ),
+
                       const SizedBox(height: 16),
+
                       DropdownButtonFormField<String>(
                         value: selectedZone,
                         decoration: const InputDecoration(
@@ -125,17 +106,30 @@ class _AdminSpotsScreenState extends State<AdminSpotsScreen> {
                           border: OutlineInputBorder(),
                         ),
                         items: const [
-                          DropdownMenuItem(value: 'A', child: Text('Zona A')),
-                          DropdownMenuItem(value: 'B', child: Text('Zona B')),
+                          DropdownMenuItem(
+                            value: 'A',
+                            child: Text('Zona A'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'B',
+                            child: Text('Zona B'),
+                          ),
                           DropdownMenuItem(
                             value: 'VIP',
                             child: Text('Zona VIP'),
                           ),
                         ],
-                        onChanged: (val) =>
-                            setDialogState(() => selectedZone = val!),
+                        onChanged: (String? val) {
+                          if (val == null) return;
+
+                          setDialogState(() {
+                            selectedZone = val;
+                          });
+                        },
                       ),
+
                       const SizedBox(height: 16),
+
                       DropdownButtonFormField<String>(
                         value: selectedType,
                         decoration: const InputDecoration(
@@ -160,8 +154,13 @@ class _AdminSpotsScreenState extends State<AdminSpotsScreen> {
                             child: Text('Eléctricos'),
                           ),
                         ],
-                        onChanged: (val) =>
-                            setDialogState(() => selectedType = val!),
+                        onChanged: (String? val) {
+                          if (val == null) return;
+
+                          setDialogState(() {
+                            selectedType = val;
+                          });
+                        },
                       ),
                     ],
                   ),
@@ -172,7 +171,9 @@ class _AdminSpotsScreenState extends State<AdminSpotsScreen> {
                   onPressed: () => Navigator.of(ctx).pop(),
                   child: const Text(
                     'Cancelar',
-                    style: TextStyle(color: Colors.grey),
+                    style: TextStyle(
+                      color: Colors.grey,
+                    ),
                   ),
                 ),
                 ElevatedButton(
@@ -184,37 +185,49 @@ class _AdminSpotsScreenState extends State<AdminSpotsScreen> {
                     ),
                   ),
                   onPressed: () async {
-                    if (formKey.currentState!.validate()) {
-                      final codigo = idController.text.trim();
-                      final codigoFinal = codigo.contains('-')
-                          ? codigo
-                          : '$selectedZone-$codigo';
+                    if (!formKey.currentState!.validate()) {
+                      return;
+                    }
 
-                      try {
-                        await _celdaService.registrarCelda(
-                          codigoCelda: codigoFinal,
-                          tipoCelda: _tipoCeldaBackend(selectedType),
-                        );
-                        await _loadSpots();
-                        if (!mounted) return;
-                        Navigator.of(ctx).pop();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              'Celda "$codigoFinal" agregada con éxito.',
-                            ),
-                            backgroundColor: const Color(0xFF10B981),
+                    final codigo = idController.text.trim();
+
+                    final codigoFinal = codigo.contains('-')
+                        ? codigo
+                        : '$selectedZone-$codigo';
+
+                    try {
+                      await _celdaService.registrarCelda(
+                        codigoCelda: codigoFinal,
+                        tipoCelda: _tipoCeldaBackend(selectedType),
+                      );
+
+                      if (!mounted) return;
+
+                      await context.read<CeldaProvider>().cargarCeldas();
+
+                      if (!mounted) return;
+
+                      Navigator.of(ctx).pop();
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'Celda "$codigoFinal" agregada con éxito.',
                           ),
-                        );
-                      } catch (error) {
-                        if (!mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('No se pudo crear la celda: $error'),
-                            backgroundColor: Colors.red,
+                          backgroundColor: const Color(0xFF10B981),
+                        ),
+                      );
+                    } catch (error) {
+                      if (!mounted) return;
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'No se pudo crear la celda: $error',
                           ),
-                        );
-                      }
+                          backgroundColor: Colors.red,
+                        ),
+                      );
                     }
                   },
                   child: const Text('Guardar Celda'),
@@ -228,8 +241,12 @@ class _AdminSpotsScreenState extends State<AdminSpotsScreen> {
   }
 
   void _showEditSpotDialog(Map<String, dynamic> spot) {
-    String selectedStatus = spot['status'];
-    final plateController = TextEditingController(text: spot['plate'] ?? '');
+    String selectedStatus = spot['status'] as String;
+
+    final plateController = TextEditingController(
+      text: spot['plate']?.toString() ?? '',
+    );
+
     final int? celdaId = spot['celdaId'] as int?;
 
     showDialog(
@@ -248,11 +265,13 @@ class _AdminSpotsScreenState extends State<AdminSpotsScreen> {
                     color: Color(0xFF3B82F6),
                   ),
                   const SizedBox(width: 8),
-                  Text(
-                    'Gestionar Celda ${spot['id']}',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
+                  Expanded(
+                    child: Text(
+                      'Gestionar Celda ${spot['id']}',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                      ),
                     ),
                   ),
                 ],
@@ -281,15 +300,19 @@ class _AdminSpotsScreenState extends State<AdminSpotsScreen> {
                           child: Text('Reservado'),
                         ),
                       ],
-                      onChanged: (val) {
+                      onChanged: (String? val) {
+                        if (val == null) return;
+
                         setDialogState(() {
-                          selectedStatus = val!;
+                          selectedStatus = val;
+
                           if (selectedStatus == 'Disponible') {
                             plateController.clear();
                           }
                         });
                       },
                     ),
+
                     if (selectedStatus == 'Ocupado' ||
                         selectedStatus == 'Reservado') ...[
                       const SizedBox(height: 16),
@@ -310,7 +333,9 @@ class _AdminSpotsScreenState extends State<AdminSpotsScreen> {
                   onPressed: () => Navigator.of(ctx).pop(),
                   child: const Text(
                     'Cancelar',
-                    style: TextStyle(color: Colors.grey),
+                    style: TextStyle(
+                      color: Colors.grey,
+                    ),
                   ),
                 ),
                 ElevatedButton(
@@ -323,17 +348,25 @@ class _AdminSpotsScreenState extends State<AdminSpotsScreen> {
                   ),
                   onPressed: () async {
                     if (celdaId == null) return;
+
                     try {
                       final bool ocupada =
                           selectedStatus == 'Ocupado' ||
                           selectedStatus == 'Reservado';
+
                       await _celdaService.cambiarEstadoCelda(
                         celdaId: celdaId,
                         ocupada: ocupada,
                       );
-                      await _loadSpots();
+
                       if (!mounted) return;
+
+                      await context.read<CeldaProvider>().cargarCeldas();
+
+                      if (!mounted) return;
+
                       Navigator.of(ctx).pop();
+
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(
@@ -344,6 +377,7 @@ class _AdminSpotsScreenState extends State<AdminSpotsScreen> {
                       );
                     } catch (error) {
                       if (!mounted) return;
+
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(
@@ -366,11 +400,38 @@ class _AdminSpotsScreenState extends State<AdminSpotsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    final celdaProvider = context.watch<CeldaProvider>();
+
+    final List<Map<String, dynamic>> spots =
+        celdaProvider.celdas.map((celda) {
+      return {
+        'id': celda.codigoCelda,
+        'zone': celda.zona,
+        'type': celda.tipoEtiqueta,
+        'status': celda.ocupada ? 'Ocupado' : 'Disponible',
+        'plate': null,
+        'celdaId': celda.id,
+      };
+    }).toList();
+
+    final List<Map<String, dynamic>> filteredSpots =
+        _selectedFilter == 'Todas'
+            ? spots
+            : spots
+                .where(
+                  (s) => s['status'] == _selectedFilter,
+                )
+                .toList();
+
+    if (celdaProvider.cargando && spots.isEmpty) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
     }
 
-    if (_errorMessage != null) {
+    if (celdaProvider.error.isNotEmpty && spots.isEmpty) {
       return Scaffold(
         body: Center(
           child: Padding(
@@ -384,10 +445,15 @@ class _AdminSpotsScreenState extends State<AdminSpotsScreen> {
                   color: Colors.red,
                 ),
                 const SizedBox(height: 12),
-                Text(_errorMessage!, textAlign: TextAlign.center),
+                Text(
+                  celdaProvider.error,
+                  textAlign: TextAlign.center,
+                ),
                 const SizedBox(height: 12),
                 ElevatedButton(
-                  onPressed: _loadSpots,
+                  onPressed: () {
+                    context.read<CeldaProvider>().cargarCeldas();
+                  },
                   child: const Text('Reintentar'),
                 ),
               ],
@@ -397,9 +463,14 @@ class _AdminSpotsScreenState extends State<AdminSpotsScreen> {
       );
     }
 
-    int disponibles = _spots.where((s) => s['status'] == 'Disponible').length;
-    int ocupadas = _spots.where((s) => s['status'] == 'Ocupado').length;
-    int reservadas = _spots.where((s) => s['status'] == 'Reservado').length;
+    final int disponibles =
+        spots.where((s) => s['status'] == 'Disponible').length;
+
+    final int ocupadas =
+        spots.where((s) => s['status'] == 'Ocupado').length;
+
+    final int reservadas =
+        spots.where((s) => s['status'] == 'Reservado').length;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -411,7 +482,7 @@ class _AdminSpotsScreenState extends State<AdminSpotsScreen> {
             children: [
               LayoutBuilder(
                 builder: (context, constraints) {
-                  final header = const Column(
+                  const header = Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
@@ -436,6 +507,7 @@ class _AdminSpotsScreenState extends State<AdminSpotsScreen> {
                       ),
                     ],
                   );
+
                   final button = ElevatedButton.icon(
                     onPressed: _showAddSpotDialog,
                     icon: const Icon(Icons.add, size: 20),
@@ -453,32 +525,40 @@ class _AdminSpotsScreenState extends State<AdminSpotsScreen> {
                       elevation: 0,
                     ),
                   );
+
                   return constraints.maxWidth < 560
                       ? Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             header,
                             const SizedBox(height: 14),
-                            SizedBox(width: double.infinity, child: button),
+                            SizedBox(
+                              width: double.infinity,
+                              child: button,
+                            ),
                           ],
                         )
                       : Row(
                           children: [
-                            Expanded(child: header),
+                            const Expanded(
+                              child: header,
+                            ),
                             const SizedBox(width: 16),
                             button,
                           ],
                         );
                 },
               ),
+
               const SizedBox(height: 20),
+
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   children: [
                     _buildQuickStat(
                       'Total Celdas',
-                      '${_spots.length}',
+                      '${spots.length}',
                       Colors.blue,
                       Icons.grid_view_rounded,
                     ),
@@ -506,7 +586,9 @@ class _AdminSpotsScreenState extends State<AdminSpotsScreen> {
                   ],
                 ),
               ),
+
               const SizedBox(height: 24),
+
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(
@@ -518,27 +600,32 @@ class _AdminSpotsScreenState extends State<AdminSpotsScreen> {
                   ],
                 ),
               ),
+
               const SizedBox(height: 20),
+
               LayoutBuilder(
                 builder: (context, constraints) {
-                  int crossAxisCount = constraints.maxWidth > 1100
-                      ? 4
-                      : constraints.maxWidth > 700
-                      ? 3
-                      : 2;
+                  final int crossAxisCount =
+                      constraints.maxWidth > 1100
+                          ? 4
+                          : constraints.maxWidth > 700
+                              ? 3
+                              : 2;
 
                   return GridView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    gridDelegate:
+                        SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: crossAxisCount,
                       crossAxisSpacing: 16,
                       mainAxisSpacing: 16,
                       childAspectRatio: 1.35,
                     ),
-                    itemCount: _filteredSpots.length,
+                    itemCount: filteredSpots.length,
                     itemBuilder: (context, index) {
-                      final spot = _filteredSpots[index];
+                      final spot = filteredSpots[index];
+
                       return _buildSpotCard(spot);
                     },
                   );
@@ -565,10 +652,15 @@ class _AdminSpotsScreenState extends State<AdminSpotsScreen> {
         shadowColor: Colors.black12,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: Color(0xFFE2E8F0)),
+          side: const BorderSide(
+            color: Color(0xFFE2E8F0),
+          ),
         ),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 12,
+          ),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
@@ -578,10 +670,14 @@ class _AdminSpotsScreenState extends State<AdminSpotsScreen> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(icon, color: color, size: 18),
+                child: Icon(
+                  icon,
+                  color: color,
+                  size: 18,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -616,7 +712,8 @@ class _AdminSpotsScreenState extends State<AdminSpotsScreen> {
   }
 
   Widget _buildFilterChip(String label) {
-    final isSelected = _selectedFilter == label;
+    final bool isSelected = _selectedFilter == label;
+
     return Padding(
       padding: const EdgeInsets.only(right: 8.0),
       child: ChoiceChip(
@@ -632,8 +729,11 @@ class _AdminSpotsScreenState extends State<AdminSpotsScreen> {
         selectedColor: const Color(0xFF3B82F6),
         backgroundColor: Colors.white,
         labelStyle: TextStyle(
-          color: isSelected ? Colors.white : const Color(0xFF64748B),
-          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          color: isSelected
+              ? Colors.white
+              : const Color(0xFF64748B),
+          fontWeight:
+              isSelected ? FontWeight.bold : FontWeight.normal,
         ),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
@@ -654,29 +754,35 @@ class _AdminSpotsScreenState extends State<AdminSpotsScreen> {
     switch (spot['status']) {
       case 'Disponible':
         statusColor = const Color(0xFF10B981);
-        bgColor = const Color(0xFF10B981).withOpacity(0.08);
+        bgColor = const Color(0xFF10B981).withValues(alpha: 0.08);
         break;
+
       case 'Ocupado':
         statusColor = const Color(0xFFEF4444);
-        bgColor = const Color(0xFFEF4444).withOpacity(0.08);
+        bgColor = const Color(0xFFEF4444).withValues(alpha: 0.08);
         break;
+
       case 'Reservado':
         statusColor = const Color(0xFFF59E0B);
-        bgColor = const Color(0xFFF59E0B).withOpacity(0.08);
+        bgColor = const Color(0xFFF59E0B).withValues(alpha: 0.08);
         break;
+
       default:
         statusColor = const Color(0xFF64748B);
-        bgColor = const Color(0xFF64748B).withOpacity(0.08);
+        bgColor = const Color(0xFF64748B).withValues(alpha: 0.08);
     }
 
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: statusColor.withOpacity(0.3), width: 1.5),
+        border: Border.all(
+          color: statusColor.withValues(alpha: 0.3),
+          width: 1.5,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 8,
             offset: const Offset(0, 4),
           ),
@@ -697,27 +803,30 @@ class _AdminSpotsScreenState extends State<AdminSpotsScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      spot['id'],
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF0F172A),
+                    Expanded(
+                      child: Text(
+                        '${spot['id']}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF0F172A),
+                        ),
                       ),
                     ),
                     Icon(
                       spot['status'] == 'Disponible'
                           ? Icons.check_circle_rounded
                           : spot['status'] == 'Ocupado'
-                          ? Icons.directions_car_filled
-                          : Icons.bookmark_rounded,
+                              ? Icons.directions_car_filled
+                              : Icons.bookmark_rounded,
                       color: statusColor,
                       size: 22,
                     ),
                   ],
                 ),
+
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -730,6 +839,7 @@ class _AdminSpotsScreenState extends State<AdminSpotsScreen> {
                         color: Color(0xFF64748B),
                       ),
                     ),
+
                     if (spot['plate'] != null) ...[
                       const SizedBox(height: 2),
                       Text(
@@ -745,6 +855,7 @@ class _AdminSpotsScreenState extends State<AdminSpotsScreen> {
                     ],
                   ],
                 ),
+
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 10,
@@ -757,10 +868,13 @@ class _AdminSpotsScreenState extends State<AdminSpotsScreen> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      CircleAvatar(radius: 3, backgroundColor: statusColor),
+                      CircleAvatar(
+                        radius: 3,
+                        backgroundColor: statusColor,
+                      ),
                       const SizedBox(width: 6),
                       Text(
-                        spot['status'],
+                        '${spot['status']}',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(

@@ -1,19 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart'; // 💡 Importamos provider
 import '../../../../app_theme.dart';
-import '../../data/services/visitante_service.dart';
+import '../providers/visitante_provider.dart'; // 💡 Importamos tu nuevo provider
 
 class FormularioVisitantesScreen extends StatefulWidget {
   const FormularioVisitantesScreen({Key? key}) : super(key: key);
 
   @override
-  State<FormularioVisitantesScreen> createState() =>
+  State createState() =>
       _FormularioVisitantesScreenState();
 }
 
 class _FormularioVisitantesScreenState
-    extends State<FormularioVisitantesScreen> {
+    extends State {
   final _formKey = GlobalKey<FormState>();
-  final _visitanteService = VisitanteService();
+  // 💡 Eliminamos: final _visitanteService = VisitanteService();
 
   final _nombreController = TextEditingController();
   final _documentoController = TextEditingController();
@@ -34,7 +35,7 @@ class _FormularioVisitantesScreenState
     super.dispose();
   }
 
-  Future<void> _registrarVisitante() async {
+  Future _registrarVisitante() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _estaRegistrando = true);
@@ -44,7 +45,9 @@ class _FormularioVisitantesScreenState
           ? 'No especificada'
           : _empresaController.text.trim();
 
-      final String mensaje = await _visitanteService.registrarVisitante(
+      // 💡 CAMBIO AQUÍ: Llamamos al Provider para registrar al visitante
+      final provider = context.read();
+      final String? mensaje = await provider.registrarVisitante(
         nombreCompleto: _nombreController.text.trim(),
         documento: _documentoController.text.trim(),
         placaVehiculo: _placaController.text.trim(),
@@ -53,6 +56,11 @@ class _FormularioVisitantesScreenState
       );
 
       if (!mounted) return;
+
+      // Validamos si el provider devolvió error (null)
+      if (mensaje == null) {
+        throw Exception('No se pudo registrar el visitante. Verifica la conexión o los datos.');
+      }
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(mensaje), backgroundColor: Colors.green),
@@ -78,6 +86,8 @@ class _FormularioVisitantesScreenState
       }
     }
   }
+
+  // 👇 DE AQUÍ EN ADELANTE, LA UI DE TUS COMPAÑEROS ESTÁ 100% INTACTA 👇
 
   @override
   Widget build(BuildContext context) {

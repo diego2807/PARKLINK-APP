@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-
-import '../../data/services/log_service.dart';
+import 'package:provider/provider.dart'; // 💡 Importante para conectar el gestor de estados
+import '../providers/auditoria_provider.dart'; // 💡 Tu provider de auditoría
 import '../../domain/models/log_auditoria_model.dart';
 
 /// Modelo de datos fuertemente tipado para evitar mapas dinámicos
@@ -32,51 +32,22 @@ class AdminLogScreen extends StatefulWidget {
   const AdminLogScreen({super.key});
 
   @override
-  State<AdminLogScreen> createState() => _AdminLogScreenState();
+  State createState() => _AdminLogScreenState();
 }
 
-class _AdminLogScreenState extends State<AdminLogScreen> {
-  final LogService _logService = LogService();
+class _AdminLogScreenState extends State {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   String _selectedStatusFilter = 'Todos';
   String _selectedCategoryFilter = 'Todas';
-  bool _isLoading = true;
-  String _error = '';
-
-  List<LogEntry> _allLogs = <LogEntry>[];
 
   @override
   void initState() {
     super.initState();
-    _cargarLogs();
-  }
-
-  Future<void> _cargarLogs() async {
-    setState(() {
-      _isLoading = true;
-      _error = '';
+    // 💡 Cargamos los logs usando el provider de forma segura al iniciar la vista
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read().cargarLogs();
     });
-
-    try {
-      final List<LogAuditoriaModel> logs = await _logService.obtenerLogs();
-      if (!mounted) return;
-
-      setState(() {
-        _allLogs = logs.map(_mapLog).toList();
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _error = e.toString().replaceFirst('Exception: ', '');
-      });
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
   }
 
   LogEntry _mapLog(LogAuditoriaModel model) {
@@ -111,8 +82,8 @@ class _AdminLogScreenState extends State<AdminLogScreen> {
     super.dispose();
   }
 
-  List<LogEntry> get _filteredLogs {
-    return _allLogs.where((log) {
+  List _getFilteredLogs(List allLogs) {
+    return allLogs.where((log) {
       final matchesSearch =
           log.user.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           log.action.toLowerCase().contains(_searchQuery.toLowerCase()) ||
@@ -204,7 +175,7 @@ class _AdminLogScreenState extends State<AdminLogScreen> {
             _buildDetailRow('Dirección IP', log.ipAddress ?? 'N/A'),
             _buildDetailRow(
               'Fecha y Hora',
-              '${_formatDate(log.timestamp)} - ${_formatTime(log.timestamp)}',
+              '\({_formatDate(log.timestamp)} -\){_formatTime(log.timestamp)}',
             ),
             if (log.details != null) ...[
               const SizedBox(height: 12),
@@ -296,11 +267,16 @@ class _AdminLogScreenState extends State<AdminLogScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // 💡 Escuchamos el estado global del provider de auditoría
+    final auditoriaProvider = context.watch();
+    final _allLogs = auditoriaProvider.logs.map(_mapLog).toList();
+    final _filteredLogs = _getFilteredLogs(_allLogs);
+
     final totalLogs = _allLogs.length;
     final successCount = _allLogs.where((l) => l.status == 'Éxito').length;
     final alertCount = _allLogs.where((l) => l.status != 'Éxito').length;
 
-    if (_isLoading) {
+    if (auditoriaProvider.cargando && _allLogs.isEmpty) {
       return const Scaffold(
         backgroundColor: Color(0xFFF8FAFC),
         body: Center(
@@ -309,14 +285,14 @@ class _AdminLogScreenState extends State<AdminLogScreen> {
       );
     }
 
-    if (_error.isNotEmpty && _allLogs.isEmpty) {
+    if (auditoriaProvider.error.isNotEmpty && _allLogs.isEmpty) {
       return Scaffold(
         backgroundColor: const Color(0xFFF8FAFC),
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
             child: Text(
-              _error,
+              auditoriaProvider.error,
               textAlign: TextAlign.center,
               style: const TextStyle(color: Color(0xFF64748B)),
             ),
@@ -738,7 +714,7 @@ class _AdminLogScreenState extends State<AdminLogScreen> {
                                                     log.user.isEmpty
                                                         ? '?'
                                                         : log.user[0]
-                                                              .toUpperCase(),
+                                                            .toUpperCase(),
                                                     style: const TextStyle(
                                                       fontSize: 10,
                                                       fontWeight:
@@ -947,10 +923,10 @@ class _AdminLogScreenState extends State<AdminLogScreen> {
   }
 
   String _formatDate(DateTime dt) {
-    return "${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}";
+    return "\({dt.year}-\){dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}";
   }
 
   String _formatTime(DateTime dt) {
-    return "${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}:${dt.second.toString().padLeft(2, '0')}";
+    return "\({dt.hour.toString().padLeft(2, '0')}:\){dt.minute.toString().padLeft(2, '0')}:${dt.second.toString().padLeft(2, '0')}";
   }
 }

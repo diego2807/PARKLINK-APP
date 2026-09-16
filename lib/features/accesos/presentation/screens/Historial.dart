@@ -1,57 +1,36 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart'; // 💡 Nuevo import necesario
 import '../../../../app_theme.dart';
-import '../../data/services/acceso_service.dart';
+import '../providers/acceso_provider.dart'; // 💡 Importamos tu provider
 import '../../domain/models/acceso_model.dart';
 
 class HistorialScreen extends StatefulWidget {
   const HistorialScreen({Key? key}) : super(key: key);
 
   @override
-  State<HistorialScreen> createState() => _HistorialScreenState();
+  State createState() => _HistorialScreenState();
 }
 
-class _HistorialScreenState extends State<HistorialScreen> {
-  final AccesoService _accesoService = AccesoService();
-  List<AccesoModel> _historial = <AccesoModel>[];
-  bool _cargando = true;
-  String _error = '';
+class _HistorialScreenState extends State {
+  // Solo conservamos la variable de UI
   String _filtroSeleccionado = 'Todos';
 
   @override
   void initState() {
     super.initState();
-    _cargarHistorial();
-  }
-
-  Future<void> _cargarHistorial() async {
-    setState(() {
-      _cargando = true;
-      _error = '';
+    // 💡 Pedimos los datos al Provider una vez que la vista termine de dibujarse
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read().cargarHistorial();
     });
-
-    try {
-      final historial = await _accesoService.obtenerHistorialGlobal();
-      if (!mounted) return;
-      setState(() {
-        _historial = historial;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _error = e.toString().replaceFirst('Exception: ', '');
-      });
-    } finally {
-      if (mounted) {
-        setState(() {
-          _cargando = false;
-        });
-      }
-    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final historialFiltrado = _historial.where((item) {
+    // 💡 Escuchamos el estado global del provider en tiempo real
+    final provider = context.watch();
+
+    // 💡 Filtramos usando la lista del provider
+    final historialFiltrado = provider.historial.where((item) {
       if (_filtroSeleccionado == 'Todos') return true;
       return item.coincideConFiltro(_filtroSeleccionado);
     }).toList();
@@ -107,14 +86,16 @@ class _HistorialScreenState extends State<HistorialScreen> {
                 ),
               ),
               Expanded(
-                child: _cargando
+                // 💡 Usamos provider.cargando
+                child: provider.cargando
                     ? const Center(child: CircularProgressIndicator())
-                    : _error.isNotEmpty
+                    // 💡 Usamos provider.error
+                    : provider.error.isNotEmpty
                     ? Center(
                         child: Padding(
                           padding: const EdgeInsets.all(24),
                           child: Text(
-                            _error,
+                            provider.error,
                             textAlign: TextAlign.center,
                             style: const TextStyle(color: AppTheme.textMuted),
                           ),
@@ -210,7 +191,7 @@ class _HistorialScreenState extends State<HistorialScreen> {
                                           const SizedBox(width: 8),
                                           Flexible(
                                             child: Text(
-                                              '${item.fechaTexto} • ${item.horaTexto}',
+                                              '\({item.fechaTexto} •\){item.horaTexto}',
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
                                               textAlign: TextAlign.end,
@@ -226,7 +207,7 @@ class _HistorialScreenState extends State<HistorialScreen> {
                                       Text(
                                         item.celdaTexto == 'N/A'
                                             ? item.tipoMovimiento
-                                            : '${item.tipoMovimiento} • ${item.celdaTexto}',
+                                            : '\({item.tipoMovimiento} •\){item.celdaTexto}',
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                         style: const TextStyle(

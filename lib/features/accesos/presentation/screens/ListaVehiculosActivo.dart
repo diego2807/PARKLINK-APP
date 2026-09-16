@@ -1,20 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../../app_theme.dart';
-import '../../data/services/acceso_service.dart';
+import '../providers/acceso_provider.dart';
 import '../../domain/models/vehiculo_activo_model.dart';
 
 class ListaVehiculosActivoScreen extends StatefulWidget {
   const ListaVehiculosActivoScreen({Key? key}) : super(key: key);
 
   @override
-  State<ListaVehiculosActivoScreen> createState() =>
+  State createState() =>
       _ListaVehiculosActivoScreenState();
 }
 
 class _ListaVehiculosActivoScreenState
-    extends State<ListaVehiculosActivoScreen> {
-  final AccesoService _accesoService = AccesoService();
-  final List<Map<String, String>> vehiculos = <Map<String, String>>[];
+    extends State {
+  // Inferencia limpia sin riesgos de copiado
+  final List vehiculos = [];
   final _formKey = GlobalKey<FormState>();
   final _placaController = TextEditingController();
   final _marcaController = TextEditingController();
@@ -35,15 +36,16 @@ class _ListaVehiculosActivoScreenState
     super.dispose();
   }
 
-  Future<void> _cargarVehiculosActivos() async {
+  Future _cargarVehiculosActivos() async {
     setState(() {
       _cargando = true;
       _error = '';
     });
 
     try {
-      final List<VehiculoActivoModel> activos = await _accesoService
-          .obtenerVehiculosActivosSeguro();
+      final provider = context.read();
+      await provider.cargarVehiculosActivos();
+      final List activos = provider.vehiculosActivos;
 
       if (!mounted) return;
 
@@ -548,9 +550,9 @@ class _ListaVehiculosActivoScreenState
                                             Container(
                                               padding:
                                                   const EdgeInsets.symmetric(
-                                                    horizontal: 10,
-                                                    vertical: 3,
-                                                  ),
+                                                horizontal: 10,
+                                                vertical: 3,
+                                              ),
                                               decoration: BoxDecoration(
                                                 color: Colors.green.withValues(
                                                   alpha: 0.15,

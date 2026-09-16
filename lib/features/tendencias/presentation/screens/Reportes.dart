@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../providers/tendencia_provider.dart';
 import '../../data/services/tendencia_service.dart';
 import '../../domain/models/tendencia_model.dart';
 
@@ -11,115 +13,130 @@ class AdminReportsScreen extends StatefulWidget {
 }
 
 class _AdminReportsScreenState extends State<AdminReportsScreen> {
-  final TendenciaService _tendenciaService = TendenciaService();
-
-  String _selectedPeriod = 'Este Mes';
-  RangoTendencia _rango = RangoTendencia.mes;
-  TendenciaModel _tendencia = TendenciaModel.vacio();
-  bool _isLoading = true;
-  String? _error;
+  String _selectedPeriod = 'Semanal';
+  RangoTendencia _rangoSeleccionado = RangoTendencia.semana;
 
   @override
   void initState() {
     super.initState();
-    _cargarDatos();
-  }
 
-  Future<void> _cargarDatos() async {
-    setState(() {
-      _isLoading = true;
-      _error = null;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<TendenciaProvider>().cargarTendencias();
     });
-
-    try {
-      final TendenciaModel data = await _tendenciaService.obtenerTendencias(
-        rango: _rango,
-      );
-      if (!mounted) return;
-      setState(() => _tendencia = data);
-    } catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _error = error.toString().replaceFirst('Exception: ', '');
-      });
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
   }
 
   Future<void> _cambiarPeriodo(String period) async {
     final RangoTendencia nuevoRango = switch (period) {
-      'Esta Semana' => RangoTendencia.semana,
-      'Trimestre' => RangoTendencia.mes,
-      'Año Actual' => RangoTendencia.mes,
-      _ => RangoTendencia.mes,
+      'Hoy' => RangoTendencia.hoy,
+      'Mensual' => RangoTendencia.mes,
+      _ => RangoTendencia.semana,
     };
 
-    if (_selectedPeriod == period) return;
+    if (nuevoRango == _rangoSeleccionado &&
+        _selectedPeriod == period) {
+      return;
+    }
 
     setState(() {
       _selectedPeriod = period;
-      _rango = nuevoRango;
+      _rangoSeleccionado = nuevoRango;
     });
 
-    await _cargarDatos();
+    final TendenciaProvider provider =
+        context.read<TendenciaProvider>();
+
+    switch (nuevoRango) {
+      case RangoTendencia.hoy:
+        await provider.cargarTendenciasDeHoy();
+        break;
+
+      case RangoTendencia.semana:
+        await provider.cargarTendenciasDeLaSemana();
+        break;
+
+      case RangoTendencia.mes:
+        await provider.cargarTendenciasDelMes();
+        break;
+    }
   }
 
-  List<Map<String, dynamic>> get _hourlyData {
-    final List<HoraPicoModel> horas = _tendencia.horasPico;
-    if (horas.isEmpty) return const <Map<String, dynamic>>[];
+  List<Map<String, dynamic>> _getDayData(
+    TendenciaModel tendencia,
+  ) {
+    final List<DiaPicoModel> dias = tendencia.diasPico;
 
-    final int maximo = horas
-        .map((HoraPicoModel item) => item.cantidadIngresos)
-        .fold<int>(0, (int a, int b) => a > b ? a : b);
+    if (dias.isEmpty) {
+      return const [];
+    }
 
-    return horas
+    final int maximo = tendencia.maximoIngresosDia;
+
+    return dias
         .map(
-          (HoraPicoModel hora) => {
-            'time': hora.hora,
-            'percentage': maximo == 0
-                ? 0
-                : ((hora.cantidadIngresos / maximo) * 100).round(),
+          (DiaPicoModel dia) => <String, dynamic>{
+            'day': dia.diaCorto,
+            'percentage':
+                maximo == 0 ? 0.0 : dia.ingresos / maximo,
+            'label': '${dia.ingresos}',
           },
         )
         .toList();
   }
 
-  double get _ocupacionPromedio {
-    final int total = _tendencia.totalIngresos;
-    if (_tendencia.diasPico.isEmpty) return 0;
-    final int base = _tendencia.diasPico.length * 12;
-    return (total / base).clamp(0.0, 1.0);
-  }
+  Color _getBarColor(double value) {
+    if (value >= 0.90) {
+      return const Color(0xFFEF4444);
+    }
 
-  void _exportReport(String type) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.download_done_rounded, color: Colors.white),
-            const SizedBox(width: 10),
-            Text('Generando y descargando reporte en formato $type...'),
-          ],
-        ),
-        backgroundColor: const Color(0xFF1E3A8A),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
+    if (value >= 0.70) {
+      return const Color(0xFF3B82F6);
+    }
+
+    if (value >= 0.40) {
+      return const Color(0xFF10B981);
+    }
+
+    return const Color(0xFF94A3B8);
   }
 
   @override
   Widget build(BuildContext context) {
-    final DiaPicoModel? diaMasConcurrido = _tendencia.diaMasConcurrido;
-    final HoraPicoModel? franjaMasConcurrida = _tendencia.franjaMasConcurrida;
-    final String horaPico = franjaMasConcurrida?.hora ?? 'Sin datos';
-    final String valorOcupacion = '${(_ocupacionPromedio * 100).round()}%';
-    final String resumenDia = diaMasConcurrido != null
-        ? 'Mayor pico: ${diaMasConcurrido.dia} (${diaMasConcurrido.ingresos})'
-        : 'Sin datos del día más concurrido';
+    final TendenciaProvider tendenciaProvider =
+        context.watch<TendenciaProvider>();
+
+    final TendenciaModel tendencia =
+        tendenciaProvider.tendencia ??
+            TendenciaModel.vacio();
+
+    final DiaPicoModel? diaMasConcurrido =
+        tendencia.diaMasConcurrido;
+
+    final HoraPicoModel? horaMasConcurrida =
+        tendencia.franjaMasConcurrida;
+
+    final List<HoraPicoModel> horasResumen =
+        tendencia.horasPico.length > 3
+            ? tendencia.horasPico.take(3).toList()
+            : tendencia.horasPico;
+
+    final int maximoIngresosHora = horasResumen.isEmpty
+        ? 0
+        : horasResumen
+            .map(
+              (HoraPicoModel item) =>
+                  item.cantidadIngresos,
+            )
+            .reduce(
+              (int a, int b) => a > b ? a : b,
+            );
+
+    final List<Map<String, dynamic>> dayData =
+        _getDayData(tendencia);
+
+    final bool sinDatos =
+        !tendenciaProvider.cargando &&
+        tendenciaProvider.tendencia == null &&
+        tendenciaProvider.error.isEmpty;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -128,50 +145,70 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
           padding: const EdgeInsets.all(24.0),
           child: Center(
             child: Container(
-              constraints: const BoxConstraints(maxWidth: 1100),
+              constraints: const BoxConstraints(
+                maxWidth: 1200,
+              ),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment:
+                    CrossAxisAlignment.start,
                 children: [
                   LayoutBuilder(
                     builder: (context, constraints) {
-                      if (constraints.maxWidth < 600) {
+                      if (constraints.maxWidth < 700) {
                         return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                          crossAxisAlignment:
+                              CrossAxisAlignment.start,
                           children: [
                             _buildHeaderTitles(),
                             const SizedBox(height: 16),
-                            _buildPeriodDropdown(),
+                            _buildPeriodSelector(),
                           ],
                         );
                       }
+
                       return Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        mainAxisAlignment:
+                            MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment:
+                            CrossAxisAlignment.center,
                         children: [
-                          Expanded(child: _buildHeaderTitles()),
+                          Expanded(
+                            child: _buildHeaderTitles(),
+                          ),
                           const SizedBox(width: 16),
-                          _buildPeriodDropdown(),
+                          _buildPeriodSelector(),
                         ],
                       );
                     },
                   ),
+
                   const SizedBox(height: 24),
-                  if (_isLoading)
+
+                  if (tendenciaProvider.cargando &&
+                      tendenciaProvider.tendencia == null)
                     const Center(
                       child: Padding(
-                        padding: EdgeInsets.symmetric(vertical: 30),
+                        padding: EdgeInsets.symmetric(
+                          vertical: 30,
+                        ),
                         child: CircularProgressIndicator(),
                       ),
                     )
-                  else ...<Widget>[
-                    if (_error != null)
+                  else ...[
+                    if (tendenciaProvider.error.isNotEmpty)
                       Container(
                         width: double.infinity,
-                        margin: const EdgeInsets.only(bottom: 18),
+                        margin: const EdgeInsets.only(
+                          bottom: 18,
+                        ),
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
                           color: const Color(0xFFFEF2F2),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFFECACA)),
+                          borderRadius:
+                              BorderRadius.circular(12),
+                          border: Border.all(
+                            color: const Color(0xFFFECACA),
+                          ),
                         ),
                         child: Row(
                           children: [
@@ -182,359 +219,562 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
                             const SizedBox(width: 10),
                             Expanded(
                               child: Text(
-                                _error!,
-                                style: const TextStyle(color: Colors.red),
+                                tendenciaProvider.error,
+                                style: const TextStyle(
+                                  color: Colors.red,
+                                ),
                               ),
                             ),
                           ],
                         ),
                       ),
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        final bool isDesktop = constraints.maxWidth >= 800;
-                        if (isDesktop) {
-                          return Row(
-                            children: [
-                              Expanded(
-                                child: _buildMetricCard(
-                                  title: 'Ocupación Promedio',
-                                  value: valorOcupacion,
-                                  subtitle:
-                                      'Total analizado: ${_tendencia.totalIngresos} ingresos',
-                                  icon: Icons.pie_chart_outline_rounded,
-                                  color: const Color(0xFF2563EB),
-                                  progress: _ocupacionPromedio,
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: _buildMetricCard(
-                                  title: 'Hora Pico de Afluencia',
-                                  value: horaPico,
-                                  subtitle: resumenDia,
-                                  icon: Icons.access_time_filled_rounded,
-                                  color: const Color(0xFF059669),
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: _buildMetricCard(
-                                  title: 'Rotación Diaria',
-                                  value: _tendencia
-                                      .metricasPrediccion
-                                      .tiempoPromedio,
-                                  subtitle: _tendencia
-                                      .metricasPrediccion
-                                      .perfilPredominante,
-                                  icon: Icons.autorenew_rounded,
-                                  color: const Color(0xFF7C3AED),
-                                ),
-                              ),
-                            ],
-                          );
-                        }
 
-                        return Column(
-                          children: [
-                            _buildMetricCard(
-                              title: 'Ocupación Promedio',
-                              value: valorOcupacion,
-                              subtitle:
-                                  'Total analizado: ${_tendencia.totalIngresos} ingresos',
-                              icon: Icons.pie_chart_outline_rounded,
-                              color: const Color(0xFF2563EB),
-                              progress: _ocupacionPromedio,
-                            ),
-                            const SizedBox(height: 16),
-                            _buildMetricCard(
-                              title: 'Hora Pico de Afluencia',
-                              value: horaPico,
-                              subtitle: resumenDia,
-                              icon: Icons.access_time_filled_rounded,
-                              color: const Color(0xFF059669),
-                            ),
-                            const SizedBox(height: 16),
-                            _buildMetricCard(
-                              title: 'Rotación Diaria',
-                              value:
-                                  _tendencia.metricasPrediccion.tiempoPromedio,
-                              subtitle: _tendencia
-                                  .metricasPrediccion
-                                  .perfilPredominante,
-                              icon: Icons.autorenew_rounded,
-                              color: const Color(0xFF7C3AED),
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 24),
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Comportamiento de Ocupación por Horarios',
-                                    style: TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xFF0F172A),
-                                    ),
-                                  ),
-                                  SizedBox(height: 2),
-                                  Text(
-                                    'Nivel de demanda porcentual registrado a lo largo del día',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Color(0xFF64748B),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              Icon(
-                                Icons.bar_chart_rounded,
-                                color: Color(0xFF2563EB),
-                              ),
-                            ],
+                    if (sinDatos)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(
+                          vertical: 24,
+                        ),
+                        child: Text(
+                          'No hay datos de tendencias disponibles.',
+                          style: TextStyle(
+                            color: Color(0xFF64748B),
                           ),
-                          const SizedBox(height: 24),
-                          if (_hourlyData.isEmpty)
-                            const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 12),
-                              child: Text(
-                                'No hay datos de horarios disponibles para este rango.',
-                                style: TextStyle(color: Color(0xFF64748B)),
-                              ),
-                            )
-                          else
-                            SingleChildScrollView(
-                              scrollDirection: Axis.horizontal,
-                              child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceAround,
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: _hourlyData.map((data) {
-                                  final int percentage =
-                                      data['percentage'] as int;
-                                  final bool isPeak = percentage >= 85;
-                                  final String label = data['time'].toString();
+                        ),
+                      ),
 
-                                  return Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12.0,
-                                    ),
-                                    child: Column(
-                                      children: [
-                                        Text(
-                                          '$percentage%',
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.bold,
-                                            color: isPeak
-                                                ? const Color(0xFFDC2626)
-                                                : const Color(0xFF64748B),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 6),
-                                        Container(
-                                          width: 32,
-                                          height: (percentage * 1.4).toDouble(),
-                                          decoration: BoxDecoration(
-                                            color: isPeak
-                                                ? const Color(0xFFEF4444)
-                                                : const Color(0xFF3B82F6),
-                                            borderRadius: BorderRadius.circular(
-                                              6,
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 8),
-                                        Text(
-                                          label,
-                                          style: const TextStyle(
-                                            fontSize: 11,
-                                            color: Color(0xFF64748B),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                }).toList(),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
-                      ),
-                      child: LayoutBuilder(
+                    if (!sinDatos) ...[
+                      LayoutBuilder(
                         builder: (context, constraints) {
-                          if (constraints.maxWidth < 750) {
-                            return Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                          if (constraints.maxWidth >= 900) {
+                            return Row(
                               children: [
-                                _buildExportInfoContent(),
-                                const SizedBox(height: 16),
-                                SizedBox(
-                                  width: double.infinity,
-                                  child: Wrap(
-                                    alignment: WrapAlignment.end,
-                                    spacing: 12,
-                                    runSpacing: 12,
-                                    children: [
-                                      OutlinedButton.icon(
-                                        style: OutlinedButton.styleFrom(
-                                          foregroundColor: const Color(
-                                            0xFF059669,
-                                          ),
-                                          side: const BorderSide(
-                                            color: Color(0xFF10B981),
-                                          ),
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 16,
-                                            vertical: 12,
-                                          ),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              10,
-                                            ),
-                                          ),
-                                        ),
-                                        onPressed: () => _exportReport('Excel'),
-                                        icon: const Icon(
-                                          Icons.table_view_rounded,
-                                          size: 18,
-                                        ),
-                                        label: const Text(
-                                          'Exportar Excel',
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ),
-                                      ElevatedButton.icon(
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: const Color(
-                                            0xFF1E3A8A,
-                                          ),
-                                          foregroundColor: Colors.white,
-                                          elevation: 0,
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 16,
-                                            vertical: 12,
-                                          ),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              10,
-                                            ),
-                                          ),
-                                        ),
-                                        onPressed: () => _exportReport('PDF'),
-                                        icon: const Icon(
-                                          Icons.picture_as_pdf_rounded,
-                                          size: 18,
-                                        ),
-                                        label: const Text(
-                                          'Exportar PDF',
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
+                                Expanded(
+                                  child: _buildStatCard(
+                                    'Hora Pico Principal',
+                                    horaMasConcurrida?.hora ??
+                                        'Sin datos',
+                                    horaMasConcurrida?.flujo ??
+                                        'Sin información',
+                                    Icons
+                                        .access_time_filled_rounded,
+                                    const Color(0xFFF59E0B),
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: _buildStatCard(
+                                    'Día Con Mayor Flujo',
+                                    diaMasConcurrido != null
+                                        ? '${diaMasConcurrido.dia} '
+                                          '(${diaMasConcurrido.ingresos})'
+                                        : 'Sin datos',
+                                    'Mayor volumen del período',
+                                    Icons.trending_up_rounded,
+                                    const Color(0xFFEF4444),
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: _buildStatCard(
+                                    'Tiempo Promedio',
+                                    tendencia
+                                        .metricasPrediccion
+                                        .tiempoPromedio,
+                                    tendencia
+                                        .metricasPrediccion
+                                        .perfilPredominante,
+                                    Icons.timer_outlined,
+                                    const Color(0xFF3B82F6),
                                   ),
                                 ),
                               ],
                             );
                           }
-                          return Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+
+                          return Column(
                             children: [
-                              Expanded(child: _buildExportInfoContent()),
-                              const SizedBox(width: 16),
-                              Row(
-                                children: [
-                                  OutlinedButton.icon(
-                                    style: OutlinedButton.styleFrom(
-                                      foregroundColor: const Color(0xFF059669),
-                                      side: const BorderSide(
-                                        color: Color(0xFF10B981),
-                                      ),
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 16,
-                                        vertical: 12,
-                                      ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                    ),
-                                    onPressed: () => _exportReport('Excel'),
-                                    icon: const Icon(
-                                      Icons.table_view_rounded,
-                                      size: 18,
-                                    ),
-                                    label: const Text(
-                                      'Exportar Excel',
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  ElevatedButton.icon(
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: const Color(0xFF1E3A8A),
-                                      foregroundColor: Colors.white,
-                                      elevation: 0,
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 16,
-                                        vertical: 12,
-                                      ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                    ),
-                                    onPressed: () => _exportReport('PDF'),
-                                    icon: const Icon(
-                                      Icons.picture_as_pdf_rounded,
-                                      size: 18,
-                                    ),
-                                    label: const Text(
-                                      'Exportar PDF',
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                              _buildStatCard(
+                                'Hora Pico Principal',
+                                horaMasConcurrida?.hora ??
+                                    'Sin datos',
+                                horaMasConcurrida?.flujo ??
+                                    'Sin información',
+                                Icons
+                                    .access_time_filled_rounded,
+                                const Color(0xFFF59E0B),
+                              ),
+                              const SizedBox(height: 16),
+                              _buildStatCard(
+                                'Día Con Mayor Flujo',
+                                diaMasConcurrido != null
+                                    ? '${diaMasConcurrido.dia} '
+                                      '(${diaMasConcurrido.ingresos})'
+                                    : 'Sin datos',
+                                'Mayor volumen del período',
+                                Icons.trending_up_rounded,
+                                const Color(0xFFEF4444),
+                              ),
+                              const SizedBox(height: 16),
+                              _buildStatCard(
+                                'Tiempo Promedio',
+                                tendencia
+                                    .metricasPrediccion
+                                    .tiempoPromedio,
+                                tendencia
+                                    .metricasPrediccion
+                                    .perfilPredominante,
+                                Icons.timer_outlined,
+                                const Color(0xFF3B82F6),
                               ),
                             ],
                           );
                         },
                       ),
-                    ),
+
+                      const SizedBox(height: 24),
+
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          final Widget chartSection =
+                              Container(
+                            padding:
+                                const EdgeInsets.all(24),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius:
+                                  BorderRadius.circular(16),
+                              border: Border.all(
+                                color:
+                                    const Color(0xFFE2E8F0),
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black
+                                      .withValues(alpha: 0.02),
+                                  blurRadius: 10,
+                                  offset:
+                                      const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment:
+                                  CrossAxisAlignment.start,
+                              children: [
+                                LayoutBuilder(
+                                  builder: (
+                                    context,
+                                    innerConstraints,
+                                  ) {
+                                    if (innerConstraints
+                                            .maxWidth <
+                                        500) {
+                                      return const Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment
+                                                .start,
+                                        children: [
+                                          Text(
+                                            'Ingresos por Día',
+                                            style: TextStyle(
+                                              fontSize: 15,
+                                              fontWeight:
+                                                  FontWeight.bold,
+                                              color: Color(
+                                                0xFF0F172A,
+                                              ),
+                                            ),
+                                          ),
+                                          SizedBox(height: 10),
+                                          Wrap(
+                                            spacing: 12,
+                                            runSpacing: 4,
+                                            children: [
+                                              _LegendDot(
+                                                color: Color(
+                                                  0xFFEF4444,
+                                                ),
+                                                label: 'Alto',
+                                              ),
+                                              _LegendDot(
+                                                color: Color(
+                                                  0xFF3B82F6,
+                                                ),
+                                                label: 'Medio',
+                                              ),
+                                              _LegendDot(
+                                                color: Color(
+                                                  0xFF10B981,
+                                                ),
+                                                label: 'Bajo',
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      );
+                                    }
+
+                                    return const Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment
+                                              .spaceBetween,
+                                      children: [
+                                        Text(
+                                          'Ingresos por Día',
+                                          style: TextStyle(
+                                            fontSize: 15,
+                                            fontWeight:
+                                                FontWeight.bold,
+                                            color: Color(
+                                              0xFF0F172A,
+                                            ),
+                                          ),
+                                        ),
+                                        Row(
+                                          children: [
+                                            _LegendDot(
+                                              color: Color(
+                                                0xFFEF4444,
+                                              ),
+                                              label: 'Alto',
+                                            ),
+                                            SizedBox(width: 12),
+                                            _LegendDot(
+                                              color: Color(
+                                                0xFF3B82F6,
+                                              ),
+                                              label: 'Medio',
+                                            ),
+                                            SizedBox(width: 12),
+                                            _LegendDot(
+                                              color: Color(
+                                                0xFF10B981,
+                                              ),
+                                              label: 'Bajo',
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    );
+                                  },
+                                ),
+
+                                const SizedBox(height: 28),
+
+                                if (dayData.isEmpty)
+                                  const Padding(
+                                    padding:
+                                        EdgeInsets.symmetric(
+                                      vertical: 12,
+                                    ),
+                                    child: Text(
+                                      'No hay datos disponibles para este rango.',
+                                      style: TextStyle(
+                                        color:
+                                            Color(0xFF64748B),
+                                      ),
+                                    ),
+                                  )
+                                else
+                                  SingleChildScrollView(
+                                    scrollDirection:
+                                        Axis.horizontal,
+                                    child: SizedBox(
+                                      height: 200,
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment
+                                                .spaceAround,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment
+                                                .end,
+                                        children: dayData
+                                            .map((data) {
+                                          final double
+                                              percentage =
+                                              (data['percentage']
+                                                      as num)
+                                                  .toDouble();
+
+                                          final double height =
+                                              percentage <= 0
+                                                  ? 8
+                                                  : 18 +
+                                                      (150 *
+                                                          percentage);
+
+                                          final Color barColor =
+                                              _getBarColor(
+                                            percentage,
+                                          );
+
+                                          return Padding(
+                                            padding:
+                                                const EdgeInsets
+                                                    .symmetric(
+                                              horizontal: 10,
+                                            ),
+                                            child: Column(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment
+                                                      .end,
+                                              children: [
+                                                Text(
+                                                  data['label']
+                                                      as String,
+                                                  style: TextStyle(
+                                                    fontSize: 11,
+                                                    fontWeight:
+                                                        FontWeight
+                                                            .bold,
+                                                    color:
+                                                        barColor,
+                                                  ),
+                                                ),
+                                                const SizedBox(
+                                                  height: 8,
+                                                ),
+                                                AnimatedContainer(
+                                                  duration:
+                                                      const Duration(
+                                                    milliseconds:
+                                                        500,
+                                                  ),
+                                                  width: 34,
+                                                  height: height,
+                                                  decoration:
+                                                      BoxDecoration(
+                                                    color:
+                                                        barColor,
+                                                    borderRadius:
+                                                        BorderRadius
+                                                            .circular(
+                                                      6,
+                                                    ),
+                                                  ),
+                                                ),
+                                                const SizedBox(
+                                                  height: 12,
+                                                ),
+                                                Text(
+                                                  data['day']
+                                                      as String,
+                                                  style:
+                                                      const TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight:
+                                                        FontWeight
+                                                            .w600,
+                                                    color: Color(
+                                                      0xFF64748B,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                        }).toList(),
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          );
+
+                          final Widget sideSection =
+                              Column(
+                            children: [
+                              Container(
+                                padding:
+                                    const EdgeInsets.all(20),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius:
+                                      BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: const Color(
+                                      0xFFE2E8F0,
+                                    ),
+                                  ),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Afluencia por Turno',
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight:
+                                            FontWeight.bold,
+                                        color: Color(
+                                          0xFF0F172A,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+
+                                    if (horasResumen.isEmpty)
+                                      const Text(
+                                        'No hay franjas horarias registradas.',
+                                        style: TextStyle(
+                                          color:
+                                              Color(0xFF64748B),
+                                        ),
+                                      )
+                                    else
+                                      ...horasResumen.map(
+                                        (HoraPicoModel hora) {
+                                          final double
+                                              percentage =
+                                              maximoIngresosHora ==
+                                                      0
+                                                  ? 0.0
+                                                  : (hora
+                                                              .cantidadIngresos /
+                                                          maximoIngresosHora)
+                                                      .clamp(
+                                                        0.0,
+                                                        1.0,
+                                                      );
+
+                                          final Color barColor =
+                                              percentage > 0.8
+                                                  ? const Color(
+                                                      0xFFEF4444,
+                                                    )
+                                                  : percentage >
+                                                          0.5
+                                                      ? const Color(
+                                                          0xFF3B82F6,
+                                                        )
+                                                      : const Color(
+                                                          0xFF10B981,
+                                                        );
+
+                                          return Padding(
+                                            padding:
+                                                const EdgeInsets
+                                                    .only(
+                                              bottom: 12,
+                                            ),
+                                            child:
+                                                _buildShiftRow(
+                                              hora.hora,
+                                              percentage,
+                                              hora.flujo,
+                                              barColor,
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                  ],
+                                ),
+                              ),
+
+                              const SizedBox(height: 16),
+
+                              Container(
+                                padding:
+                                    const EdgeInsets.all(18),
+                                decoration: BoxDecoration(
+                                  color: const Color(
+                                    0xFFEFF6FF,
+                                  ),
+                                  borderRadius:
+                                      BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: const Color(
+                                      0xFFBFDBFE,
+                                    ),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.auto_awesome,
+                                      color: Color(
+                                        0xFF2563EB,
+                                      ),
+                                      size: 24,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment
+                                                .start,
+                                        children: [
+                                          const Text(
+                                            'Recomendación del Sistema',
+                                            style: TextStyle(
+                                              fontWeight:
+                                                  FontWeight.bold,
+                                              fontSize: 13,
+                                              color: Color(
+                                                0xFF1E40AF,
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(
+                                            height: 2,
+                                          ),
+                                          Text(
+                                            diaMasConcurrido !=
+                                                    null
+                                                ? 'El mayor flujo de '
+                                                    'vehículos se registra '
+                                                    'en ${diaMasConcurrido.dia} '
+                                                    'con ${diaMasConcurrido.ingresos} '
+                                                    'ingresos.'
+                                                : 'Aún no hay suficiente '
+                                                    'información para '
+                                                    'recomendar cambios.',
+                                            style:
+                                                const TextStyle(
+                                              fontSize: 11,
+                                              color: Color(
+                                                0xFF1E3A8A,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          );
+
+                          if (constraints.maxWidth >= 950) {
+                            return Row(
+                              crossAxisAlignment:
+                                  CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  flex: 3,
+                                  child: chartSection,
+                                ),
+                                const SizedBox(width: 20),
+                                Expanded(
+                                  flex: 2,
+                                  child: sideSection,
+                                ),
+                              ],
+                            );
+                          }
+
+                          return Column(
+                            children: [
+                              chartSection,
+                              const SizedBox(height: 20),
+                              sideSection,
+                            ],
+                          );
+                        },
+                      ),
+                    ],
                   ],
                 ],
               ),
@@ -550,7 +790,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Resumen Analítico de Uso',
+          'Comportamiento de Ocupación',
           style: TextStyle(
             fontSize: 22,
             fontWeight: FontWeight.bold,
@@ -559,152 +799,220 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
         ),
         SizedBox(height: 4),
         Text(
-          'Analiza el rendimiento del parqueadero corporativo y exporta los informes.',
-          style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+          'Analiza los días y horarios con mayor flujo de vehículos para anticipar la demanda.',
+          style: TextStyle(
+            fontSize: 13,
+            color: Color(0xFF64748B),
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildPeriodDropdown() {
+  Widget _buildPeriodSelector() {
+    const List<String> periods = [
+      'Hoy',
+      'Semanal',
+      'Mensual',
+    ];
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(
+          color: const Color(0xFFE2E8F0),
+        ),
       ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: _selectedPeriod,
-          icon: const Icon(
-            Icons.keyboard_arrow_down_rounded,
-            color: Color(0xFF64748B),
-          ),
-          items: ['Esta Semana', 'Este Mes', 'Trimestre', 'Año Actual'].map((
-            String val,
-          ) {
-            return DropdownMenuItem<String>(
-              value: val,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: periods.map((period) {
+          final bool isSelected =
+              _selectedPeriod == period;
+
+          return GestureDetector(
+            onTap: () => _cambiarPeriodo(period),
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 8,
+              ),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? const Color(0xFF3B82F6)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(8),
+              ),
               child: Text(
-                val,
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF334155),
+                period,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: isSelected
+                      ? Colors.white
+                      : const Color(0xFF64748B),
                 ),
               ),
-            );
-          }).toList(),
-          onChanged: (val) async {
-            if (val != null) {
-              await _cambiarPeriodo(val);
-            }
-          },
-        ),
+            ),
+          );
+        }).toList(),
       ),
     );
   }
 
-  Widget _buildExportInfoContent() {
-    return const Row(
-      children: [
-        CircleAvatar(
-          radius: 22,
-          backgroundColor: Color(0xFFEFF6FF),
-          child: Icon(Icons.description_outlined, color: Color(0xFF2563EB)),
-        ),
-        SizedBox(width: 14),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Exportar Informes Ejecutivos',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF0F172A),
-                ),
-              ),
-              SizedBox(height: 2),
-              Text(
-                'Descarga la matriz de datos completa para auditorías internas.',
-                style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildMetricCard({
-    required String title,
-    required String value,
-    required String subtitle,
-    required IconData icon,
-    required Color color,
-    double? progress,
-  }) {
+  Widget _buildStatCard(
+    String title,
+    String value,
+    String subtitle,
+    IconData icon,
+    Color color,
+  ) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(
+          color: const Color(0xFFE2E8F0),
+        ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              icon,
+              color: color,
+              size: 22,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment:
+                  CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: Color(0xFF64748B),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF0F172A),
+                  ),
+                ),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: color,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildShiftRow(
+    String title,
+    double percentage,
+    String label,
+    Color barColor,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment:
+              MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Text(
                 title,
                 style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  color: Color(0xFF64748B),
+                  color: Color(0xFF334155),
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(icon, color: color, size: 18),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF0F172A),
             ),
-          ),
-          if (progress != null) ...[
-            const SizedBox(height: 10),
-            LinearProgressIndicator(
-              value: progress,
-              backgroundColor: const Color(0xFFF1F5F9),
-              valueColor: AlwaysStoppedAnimation<Color>(color),
-              minHeight: 6,
-              borderRadius: BorderRadius.circular(10),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 11,
+                color: Color(0xFF64748B),
+              ),
             ),
           ],
-          const SizedBox(height: 8),
-          Text(
-            subtitle,
-            style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
+        ),
+        const SizedBox(height: 6),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: percentage,
+            minHeight: 8,
+            backgroundColor:
+                const Color(0xFFF1F5F9),
+            valueColor:
+                AlwaysStoppedAnimation<Color>(
+              barColor,
+            ),
           ),
-        ],
-      ),
+        ),
+      ],
+    );
+  }
+}
+
+class _LegendDot extends StatelessWidget {
+  final Color color;
+  final String label;
+
+  const _LegendDot({
+    required this.color,
+    required this.label,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 11,
+            color: Color(0xFF64748B),
+          ),
+        ),
+      ],
     );
   }
 }
