@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../app_theme.dart';
+import '../../data/services/auth_service.dart';
+import '../../domain/models/usuario_model.dart';
 
 class PerfilScreen extends StatefulWidget {
   const PerfilScreen({Key? key}) : super(key: key);
@@ -9,13 +11,57 @@ class PerfilScreen extends StatefulWidget {
 }
 
 class _PerfilScreenState extends State<PerfilScreen> {
-  // Datos simulados del perfil de usuario
-  final String _nombre = "Sara Garzón";
-  final String _correo = "sara.garzon@redeban.com";
-  final String _rol = "Apprentice / Desarrolladora";
-  final String _telefono = "+57 300 123 4567";
+  final AuthService _authService = AuthService();
 
+  String _nombre = "";
+  String _correo = "";
+  String _rol = "Usuario";
+  final String _telefono = "+57 300 123 4567";
   bool _notificacionesActivas = true;
+  bool _cargando = true;
+  String _error = "";
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarPerfil();
+  }
+
+  Future<void> _cargarPerfil() async {
+    setState(() {
+      _cargando = true;
+      _error = "";
+    });
+
+    try {
+      final UsuarioModel usuario = await _authService
+          .obtenerPerfilAutenticado();
+      if (!mounted) return;
+
+      setState(() {
+        _nombre = usuario.nombreCompleto;
+        _correo = usuario.correo;
+        _rol = usuario.rol.etiqueta;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString().replaceFirst('Exception: ', '');
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _cargando = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _cerrarSesion() async {
+    _authService.cerrarSesion();
+    if (!mounted) return;
+    Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -37,70 +83,99 @@ class _PerfilScreenState extends State<PerfilScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Tarjeta de cabecera con avatar y datos básicos
-                Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.03),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 36,
-                        backgroundColor: AppTheme.primary.withValues(alpha: 0.15),
-                        child: const Text(
-                          "SG",
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.primary,
+                if (_error.isNotEmpty)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      _error,
+                      style: const TextStyle(color: Colors.red, fontSize: 13),
+                    ),
+                  )
+                else if (_cargando)
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(24),
+                      child: CircularProgressIndicator(),
+                    ),
+                  )
+                else
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.03),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 36,
+                          backgroundColor: AppTheme.primary.withValues(
+                            alpha: 0.15,
+                          ),
+                          child: Text(
+                            _nombre.trim().isEmpty
+                                ? 'PL'
+                                : _nombre
+                                      .split(' ')
+                                      .take(2)
+                                      .map((e) => e[0])
+                                      .join()
+                                      .toUpperCase(),
+                            style: const TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: AppTheme.primary,
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 20),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              _nombre,
-                              style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: AppTheme.textDark,
+                        const SizedBox(width: 20),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _nombre,
+                                style: const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.textDark,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              _rol,
-                              style: const TextStyle(
-                                fontSize: 13,
-                                color: AppTheme.primary,
-                                fontWeight: FontWeight.w600,
+                              const SizedBox(height: 4),
+                              Text(
+                                _rol,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: AppTheme.primary,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              _correo,
-                              style: const TextStyle(
-                                fontSize: 13,
-                                color: AppTheme.textMuted,
+                              const SizedBox(height: 2),
+                              Text(
+                                _correo,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: AppTheme.textMuted,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
                 const SizedBox(height: 24),
 
                 const Text(
@@ -162,11 +237,18 @@ class _PerfilScreenState extends State<PerfilScreen> {
                         color: AppTheme.primary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Icon(Icons.notifications_outlined, color: AppTheme.primary),
+                      child: const Icon(
+                        Icons.notifications_outlined,
+                        color: AppTheme.primary,
+                      ),
                     ),
                     title: const Text(
                       "Notificaciones de acceso",
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppTheme.textDark),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                        color: AppTheme.textDark,
+                      ),
                     ),
                     subtitle: const Text(
                       "Recibir alertas cuando tus vehículos ingresen o salgan",
@@ -188,22 +270,22 @@ class _PerfilScreenState extends State<PerfilScreen> {
                   width: double.infinity,
                   height: 50,
                   child: ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.pushNamedAndRemoveUntil(
-                        context,
-                        '/login', // Asegúrate de que coincida con la ruta de tu login
-                        (route) => false,
-                      );
-                    },
+                    onPressed: _cerrarSesion,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.redAccent,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                       elevation: 0,
                     ),
                     icon: const Icon(Icons.logout_rounded, color: Colors.white),
                     label: const Text(
                       "Cerrar Sesión",
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
                     ),
                   ),
                 ),
@@ -216,7 +298,11 @@ class _PerfilScreenState extends State<PerfilScreen> {
   }
 
   // Widget auxiliar para las filas de información
-  Widget _buildInfoTile({required IconData icon, required String titulo, required String valor}) {
+  Widget _buildInfoTile({
+    required IconData icon,
+    required String titulo,
+    required String valor,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Row(
@@ -236,7 +322,10 @@ class _PerfilScreenState extends State<PerfilScreen> {
               children: [
                 Text(
                   titulo,
-                  style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppTheme.textMuted,
+                  ),
                 ),
                 const SizedBox(height: 2),
                 Text(

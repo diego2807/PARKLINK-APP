@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../app_theme.dart';
+import '../../data/services/acceso_service.dart';
 
 class FormularioEntradaScreen extends StatefulWidget {
   const FormularioEntradaScreen({super.key});
@@ -11,6 +12,7 @@ class FormularioEntradaScreen extends StatefulWidget {
 
 class _FormularioEntradaScreenState extends State<FormularioEntradaScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _accesoService = AccesoService();
   final _placaController = TextEditingController();
   final _conductorController = TextEditingController();
 
@@ -49,7 +51,7 @@ class _FormularioEntradaScreenState extends State<FormularioEntradaScreen> {
     });
   }
 
-  void _registrarEntrada() async {
+  Future<void> _registrarEntrada() async {
     if (!_formKey.currentState!.validate()) return;
     if (_celda == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -59,50 +61,85 @@ class _FormularioEntradaScreenState extends State<FormularioEntradaScreen> {
     }
 
     setState(() => _cargando = true);
-    await Future.delayed(const Duration(milliseconds: 800));
-    if (!mounted) return;
-    setState(() => _cargando = false);
 
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(
-          children: [
-            Icon(Icons.check_circle_rounded, color: AppTheme.success, size: 28),
-            SizedBox(width: 10),
-            Text(
-              "Entrada Registrada",
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
+    try {
+      final resultado = await _accesoService.registrarEntrada(
+        _placaController.text.trim(),
+      );
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(resultado.detalle),
+          backgroundColor: AppTheme.success,
+        ),
+      );
+
+      _formKey.currentState!.reset();
+      _placaController.clear();
+      _conductorController.clear();
+      setState(() {
+        _tipoVehiculo = "Carro";
+      });
+
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: const Row(
+            children: [
+              Icon(
+                Icons.check_circle_rounded,
+                color: AppTheme.success,
+                size: 28,
+              ),
+              SizedBox(width: 10),
+              Text(
+                "Entrada Registrada",
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
+              ),
+            ],
+          ),
+          content: Text(
+            "Vehículo ${_placaController.text.trim().toUpperCase()} asignado a la celda $_celda.",
+          ),
+          actions: [
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                Navigator.pop(context);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primary,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: const Text(
+                "Aceptar",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
           ],
         ),
-        content: Text(
-          "Vehículo ${_placaController.text.trim().toUpperCase()} asignado a la celda $_celda.",
-        ),
-        actions: [
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              Navigator.pop(context);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primary,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-            child: const Text(
-              "Aceptar",
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+      );
+    } catch (e) {
+      if (!mounted) return;
+      final String mensaje = e.toString().replaceFirst('Exception: ', '');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(mensaje), backgroundColor: Colors.red),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _cargando = false);
+      }
+    }
   }
 
   Widget _tipoChip(String tipo, IconData icon) {

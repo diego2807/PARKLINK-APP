@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+
+import '../../data/services/celda_service.dart';
+import '../../domain/models/celda_model.dart';
 import '../../../../app_theme.dart';
 
 class MapaGraficoScreen extends StatefulWidget {
@@ -9,104 +12,149 @@ class MapaGraficoScreen extends StatefulWidget {
 }
 
 class _MapaGraficoScreenState extends State<MapaGraficoScreen> {
-  String _zonaSeleccionada = "Torre A - Piso 1";
+  final CeldaService _celdaService = CeldaService();
+  bool _isLoading = true;
 
-  final List<String> _zonas = ["Torre A - Piso 1", "Torre A - Piso 2", "Sótano 1 - General", "Sótano 2 - VIP"];
+  String _zonaSeleccionada = '';
+  List<String> _zonas = <String>[];
+  final Map<String, List<CeldaModel>> _mapaCeldas =
+      <String, List<CeldaModel>>{};
 
-  final Map<String, List<Map<String, dynamic>>> _mapaCeldas = {
-    "Torre A - Piso 1": [
-      {"id": "A-01", "estado": "ocupado", "placa": "ABC-123"},
-      {"id": "A-02", "estado": "disponible"},
-      {"id": "A-03", "estado": "disponible"},
-      {"id": "A-04", "estado": "reservado"},
-      {"id": "A-05", "estado": "ocupado", "placa": "DEF-456"},
-      {"id": "A-06", "estado": "disponible"},
-      {"id": "A-07", "estado": "ocupado", "placa": "GHI-789"},
-      {"id": "A-08", "estado": "disponible"},
-      {"id": "A-09", "estado": "disponible"},
-    ],
-    "Torre A - Piso 2": [
-      {"id": "B-01", "estado": "ocupado", "placa": "JKL-456"},
-      {"id": "B-02", "estado": "ocupado", "placa": "MNO-111"},
-      {"id": "B-03", "estado": "disponible"},
-      {"id": "B-04", "estado": "disponible"},
-      {"id": "B-05", "estado": "disponible"},
-      {"id": "B-06", "estado": "ocupado", "placa": "PQR-222"},
-    ],
-    "Sótano 1 - General": [
-      {"id": "S1-01", "estado": "disponible"},
-      {"id": "S1-02", "estado": "ocupado", "placa": "XYZ-89"},
-      {"id": "S1-03", "estado": "ocupado", "placa": "STU-333"},
-      {"id": "S1-04", "estado": "disponible"},
-    ],
-    "Sótano 2 - VIP": [
-      {"id": "VIP-01", "estado": "disponible"},
-      {"id": "VIP-02", "estado": "ocupado", "placa": "MNP-321"},
-    ],
-  };
+  @override
+  void initState() {
+    super.initState();
+    _loadCeldas();
+  }
 
-  void _mostrarDetalle(Map<String, dynamic> celda) {
-    final estado = celda["estado"];
-    showDialog(
+  Future<void> _loadCeldas() async {
+    try {
+      final celdas = await _celdaService.obtenerCeldas();
+      final mapa = <String, List<CeldaModel>>{};
+
+      for (final celda in celdas) {
+        final key = celda.zona;
+        mapa.putIfAbsent(key, () => <CeldaModel>[]).add(celda);
+      }
+
+      setState(() {
+        _mapaCeldas
+          ..clear()
+          ..addAll(mapa);
+        _zonas = mapa.keys.toList()..sort();
+        _zonaSeleccionada = _zonas.isNotEmpty ? _zonas.first : '';
+        _isLoading = false;
+      });
+    } catch (_) {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _mostrarDetalle(CeldaModel celda) async {
+    final estado = celda.estadoClave;
+    final bool disponible = celda.disponible;
+
+    final result = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
-            Icon(Icons.local_parking_rounded, color: estado == "ocupado" ? AppTheme.accent : AppTheme.success),
+            Icon(
+              Icons.local_parking_rounded,
+              color: estado == 'ocupado' ? AppTheme.accent : AppTheme.success,
+            ),
             const SizedBox(width: 10),
-            Text("Celda ${celda["id"]}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+            Text(
+              'Celda ${celda.codigoCelda}',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
+            ),
           ],
         ),
         content: Text(
-          estado == "ocupado"
-              ? "Ocupada por el vehículo ${celda["placa"]}."
-              : estado == "reservado"
-                  ? "Celda reservada, pendiente de ingreso."
-                  : "Celda disponible para asignación inmediata.",
+          estado == 'ocupado'
+              ? 'La celda está ocupada actualmente.'
+              : 'La celda está disponible para asignación inmediata.',
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context), 
-            child: const Text("Cerrar", style: TextStyle(color: Colors.grey)),
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cerrar', style: TextStyle(color: Colors.grey)),
           ),
-          if (estado == "disponible")
+          if (disponible)
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.primary,
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
-              onPressed: () {
-                setState(() {
-                  celda["estado"] = "reservado";
-                });
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('¡Celda ${celda["id"]} reservada con éxito!'),
-                    backgroundColor: AppTheme.success,
-                  ),
-                );
-              },
-              child: const Text("Reservar"),
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Reservar'),
             ),
         ],
       ),
     );
+
+    if (result == true) {
+      try {
+        await _celdaService.cambiarEstadoCelda(
+          celdaId: celda.id,
+          ocupada: true,
+        );
+        await _loadCeldas();
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('¡Celda ${celda.codigoCelda} reservada con éxito!'),
+            backgroundColor: AppTheme.success,
+          ),
+        );
+      } catch (_) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No se pudo reservar la celda.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final celdas = _mapaCeldas[_zonaSeleccionada] ?? [];
-    final disponibles = celdas.where((c) => c["estado"] == "disponible").length;
+    if (_isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    final celdas = _mapaCeldas[_zonaSeleccionada] ?? <CeldaModel>[];
+    final disponibles = celdas.where((c) => c.disponible).length;
+
+    if (_zonas.isEmpty) {
+      return Scaffold(
+        backgroundColor: AppTheme.bgLight,
+        appBar: AppBar(
+          backgroundColor: AppTheme.primary,
+          elevation: 0,
+          title: const Text(
+            'Mapa Gráfico',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          ),
+        ),
+        body: const Center(child: Text('No hay celdas disponibles.')),
+      );
+    }
 
     return Scaffold(
       backgroundColor: AppTheme.bgLight,
       appBar: AppBar(
         backgroundColor: AppTheme.primary,
         elevation: 0,
-        title: const Text("Mapa Gráfico", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Mapa Gráfico',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
       ),
       body: Center(
         child: Container(
@@ -128,8 +176,20 @@ class _MapaGraficoScreenState extends State<MapaGraficoScreen> {
                         child: DropdownButton<String>(
                           isExpanded: true,
                           value: _zonaSeleccionada,
-                          items: _zonas.map((z) => DropdownMenuItem(value: z, child: Text(z, style: const TextStyle(fontSize: 13.5)))).toList(),
-                          onChanged: (val) => setState(() => _zonaSeleccionada = val!),
+                          items: _zonas
+                              .map(
+                                (z) => DropdownMenuItem(
+                                  value: z,
+                                  child: Text(
+                                    z,
+                                    style: const TextStyle(fontSize: 13.5),
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (val) => setState(
+                            () => _zonaSeleccionada = val ?? _zonas.first,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -138,9 +198,16 @@ class _MapaGraficoScreenState extends State<MapaGraficoScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceAround,
                         children: [
-                          _leyenda("Disponible", const Color(0xFFE8F5E9), AppTheme.success),
-                          _leyenda("Ocupado", Colors.grey[200]!, Colors.grey[500]!),
-                          _leyenda("Reservado", AppTheme.warning.withOpacity(0.15), AppTheme.warning),
+                          _leyenda(
+                            'Disponible',
+                            const Color(0xFFE8F5E9),
+                            AppTheme.success,
+                          ),
+                          _leyenda(
+                            'Ocupado',
+                            Colors.grey[200]!,
+                            Colors.grey[500]!,
+                          ),
                         ],
                       ),
                     ],
@@ -152,8 +219,22 @@ class _MapaGraficoScreenState extends State<MapaGraficoScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text("Celdas de la zona", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppTheme.textDark)),
-                    Text("$disponibles disponibles", style: const TextStyle(color: AppTheme.success, fontWeight: FontWeight.bold, fontSize: 12.5)),
+                    const Text(
+                      'Celdas de la zona',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                        color: AppTheme.textDark,
+                      ),
+                    ),
+                    Text(
+                      '$disponibles disponibles',
+                      style: const TextStyle(
+                        color: AppTheme.success,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12.5,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -170,7 +251,7 @@ class _MapaGraficoScreenState extends State<MapaGraficoScreen> {
                   itemCount: celdas.length,
                   itemBuilder: (context, index) {
                     final celda = celdas[index];
-                    final estado = celda["estado"] as String;
+                    final estado = celda.estadoClave;
 
                     Color bg;
                     Color border;
@@ -178,17 +259,11 @@ class _MapaGraficoScreenState extends State<MapaGraficoScreen> {
                     IconData icon;
 
                     switch (estado) {
-                      case "ocupado":
+                      case 'ocupado':
                         bg = Colors.grey[100]!;
                         border = Colors.grey[300]!;
                         text = Colors.grey[600]!;
                         icon = Icons.directions_car_rounded;
-                        break;
-                      case "reservado":
-                        bg = AppTheme.warning.withOpacity(0.12);
-                        border = AppTheme.warning;
-                        text = AppTheme.warning;
-                        icon = Icons.schedule_rounded;
                         break;
                       default:
                         bg = const Color(0xFFE8F5E9);
@@ -204,13 +279,25 @@ class _MapaGraficoScreenState extends State<MapaGraficoScreen> {
                         borderRadius: BorderRadius.circular(14),
                         onTap: () => _mostrarDetalle(celda),
                         child: Container(
-                          decoration: BoxDecoration(borderRadius: BorderRadius.circular(14), border: Border.all(color: border, width: 1.4)),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: border, width: 1.4),
+                          ),
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Icon(icon, color: text, size: 22),
                               const SizedBox(height: 6),
-                              Text(celda["id"] as String, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: estado == "ocupado" ? Colors.grey[700] : AppTheme.textDark)),
+                              Text(
+                                celda.codigoCelda,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                  color: estado == 'ocupado'
+                                      ? Colors.grey[700]
+                                      : AppTheme.textDark,
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -232,10 +319,21 @@ class _MapaGraficoScreenState extends State<MapaGraficoScreen> {
         Container(
           width: 14,
           height: 14,
-          decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(4), border: Border.all(color: borderColor)),
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(color: borderColor),
+          ),
         ),
         const SizedBox(width: 6),
-        Text(label, style: const TextStyle(fontSize: 11.5, color: AppTheme.textMuted, fontWeight: FontWeight.w600)),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 11.5,
+            color: AppTheme.textMuted,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ],
     );
   }

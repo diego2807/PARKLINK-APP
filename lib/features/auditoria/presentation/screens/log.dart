@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../data/services/log_service.dart';
+import '../../domain/models/log_auditoria_model.dart';
+
 /// Modelo de datos fuertemente tipado para evitar mapas dinámicos
 class LogEntry {
   final String id;
@@ -33,72 +36,74 @@ class AdminLogScreen extends StatefulWidget {
 }
 
 class _AdminLogScreenState extends State<AdminLogScreen> {
+  final LogService _logService = LogService();
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   String _selectedStatusFilter = 'Todos';
   String _selectedCategoryFilter = 'Todas';
+  bool _isLoading = true;
+  String _error = '';
 
-  final List<LogEntry> _allLogs = [
-    LogEntry(
-      id: 'LOG-1005',
-      timestamp: DateTime(2026, 6, 6, 14, 32, 10),
-      user: 'carlos.admin',
-      action: 'Modificación de tarifas y promociones',
-      category: 'Configuración',
-      status: 'Éxito',
-      icon: Icons.settings_applications_rounded,
-      ipAddress: '192.168.1.45',
-      details:
-          'Se actualizó la tarifa por hora a \$4,500 COP y el recargo nocturno.',
-    ),
-    LogEntry(
-      id: 'LOG-1004',
-      timestamp: DateTime(2026, 6, 6, 13, 15, 42),
-      user: 'vigilante_sur',
-      action: 'Liberación forzosa de celda B-02',
-      category: 'Operación',
-      status: 'Éxito',
-      icon: Icons.lock_open_rounded,
-      ipAddress: '192.168.1.88',
-      details:
-          'Liberación manual ejecutada por desincronización de sensor físico.',
-    ),
-    LogEntry(
-      id: 'LOG-1003',
-      timestamp: DateTime(2026, 6, 6, 11, 5, 22),
-      user: 'ana.gomez',
-      action: 'Intento de reserva con credencial vencida',
-      category: 'Seguridad',
-      status: 'Bloqueado',
-      icon: Icons.shield_outlined,
-      ipAddress: '181.132.40.12',
-      details: 'El sistema denegó la transacción por Token JWT expirado.',
-    ),
-    LogEntry(
-      id: 'LOG-1002',
-      timestamp: DateTime(2026, 6, 6, 9, 40, 11),
-      user: 'carlos.admin',
-      action: 'Creación de nuevo usuario operador',
-      category: 'Usuarios',
-      status: 'Éxito',
-      icon: Icons.person_add_alt_1_rounded,
-      ipAddress: '192.168.1.45',
-      details:
-          'Asignación de rol "Operador de Parqueadero" a la cuenta vigilante_norte.',
-    ),
-    LogEntry(
-      id: 'LOG-1001',
-      timestamp: DateTime(2026, 6, 6, 8, 12, 5),
-      user: 'vigilante_norte',
-      action: 'Apertura manual de talanquera principal',
-      category: 'Acceso',
-      status: 'Advertencia',
-      icon: Icons.warning_amber_rounded,
-      ipAddress: '192.168.1.89',
-      details:
-          'Apertura por fallo temporal en la lectura de la placa vehicular.',
-    ),
-  ];
+  List<LogEntry> _allLogs = <LogEntry>[];
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarLogs();
+  }
+
+  Future<void> _cargarLogs() async {
+    setState(() {
+      _isLoading = true;
+      _error = '';
+    });
+
+    try {
+      final List<LogAuditoriaModel> logs = await _logService.obtenerLogs();
+      if (!mounted) return;
+
+      setState(() {
+        _allLogs = logs.map(_mapLog).toList();
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString().replaceFirst('Exception: ', '');
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  LogEntry _mapLog(LogAuditoriaModel model) {
+    final String status = switch (model.nivel) {
+      NivelLog.critico => 'Bloqueado',
+      NivelLog.advertencia => 'Advertencia',
+      NivelLog.informativo => 'Éxito',
+    };
+
+    final IconData icon = switch (model.nivel) {
+      NivelLog.critico => Icons.shield_outlined,
+      NivelLog.advertencia => Icons.warning_amber_rounded,
+      NivelLog.informativo => Icons.info_outline_rounded,
+    };
+
+    return LogEntry(
+      id: 'LOG-${model.id}',
+      timestamp: model.fechaHora ?? DateTime.now(),
+      user: model.usuarioId?.toString() ?? 'Sistema',
+      action: model.descripcion,
+      category: model.modulo,
+      status: status,
+      icon: icon,
+      ipAddress: null,
+      details: model.descripcion,
+    );
+  }
 
   @override
   void dispose() {
@@ -279,6 +284,31 @@ class _AdminLogScreenState extends State<AdminLogScreen> {
     final successCount = _allLogs.where((l) => l.status == 'Éxito').length;
     final alertCount = _allLogs.where((l) => l.status != 'Éxito').length;
 
+    if (_isLoading) {
+      return const Scaffold(
+        backgroundColor: Color(0xFFF8FAFC),
+        body: Center(
+          child: CircularProgressIndicator(color: Color(0xFF3B82F6)),
+        ),
+      );
+    }
+
+    if (_error.isNotEmpty && _allLogs.isEmpty) {
+      return Scaffold(
+        backgroundColor: const Color(0xFFF8FAFC),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(
+              _error,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Color(0xFF64748B)),
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       body: SafeArea(
@@ -434,7 +464,7 @@ class _AdminLogScreenState extends State<AdminLogScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  
+
                   // FILTROS DE ESTADO
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
@@ -449,7 +479,9 @@ class _AdminLogScreenState extends State<AdminLogScreen> {
                           ),
                         ),
                         const SizedBox(width: 4),
-                        ...['Todos', 'Éxito', 'Advertencia', 'Bloqueado'].map((status) {
+                        ...['Todos', 'Éxito', 'Advertencia', 'Bloqueado'].map((
+                          status,
+                        ) {
                           final isSelected = _selectedStatusFilter == status;
                           return Padding(
                             padding: const EdgeInsets.only(right: 8.0),
@@ -458,7 +490,9 @@ class _AdminLogScreenState extends State<AdminLogScreen> {
                               selected: isSelected,
                               onSelected: (selected) {
                                 if (selected) {
-                                  setState(() => _selectedStatusFilter = status);
+                                  setState(
+                                    () => _selectedStatusFilter = status,
+                                  );
                                 }
                               },
                               selectedColor: const Color(0xFF3B82F6),
@@ -501,9 +535,16 @@ class _AdminLogScreenState extends State<AdminLogScreen> {
                           ),
                         ),
                         const SizedBox(width: 4),
-                        ...['Todas', 'Configuración', 'Operación', 'Seguridad', 'Usuarios', 'Acceso']
-                            .map((category) {
-                          final isSelected = _selectedCategoryFilter == category;
+                        ...[
+                          'Todas',
+                          'Configuración',
+                          'Operación',
+                          'Seguridad',
+                          'Usuarios',
+                          'Acceso',
+                        ].map((category) {
+                          final isSelected =
+                              _selectedCategoryFilter == category;
                           return Padding(
                             padding: const EdgeInsets.only(right: 8.0),
                             child: ChoiceChip(
@@ -511,7 +552,9 @@ class _AdminLogScreenState extends State<AdminLogScreen> {
                               selected: isSelected,
                               onSelected: (selected) {
                                 if (selected) {
-                                  setState(() => _selectedCategoryFilter = category);
+                                  setState(
+                                    () => _selectedCategoryFilter = category,
+                                  );
                                 }
                               },
                               selectedColor: const Color(0xFF0F172A),

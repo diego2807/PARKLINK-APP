@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../data/services/configuracion_service.dart';
+import '../../domain/models/configuracion_model.dart';
+
 class AdminConfigScreen extends StatefulWidget {
   const AdminConfigScreen({super.key});
 
@@ -8,6 +11,11 @@ class AdminConfigScreen extends StatefulWidget {
 }
 
 class _AdminConfigScreenState extends State<AdminConfigScreen> {
+  final ConfiguracionService _configService = ConfiguracionService();
+
+  bool _isLoading = true;
+  bool _isSaving = false;
+
   // Reglas de negocio
   int _toleranciaReserva = 15; // minutos
   int _maxHorasEstadia = 10; // horas
@@ -19,8 +27,15 @@ class _AdminConfigScreenState extends State<AdminConfigScreen> {
   bool _enviarResumenDiario = false;
 
   // Soporte
-  final TextEditingController _soporteController =
-      TextEditingController(text: 'soporte.parqueadero@redeban.com');
+  final TextEditingController _soporteController = TextEditingController(
+    text: 'soporte.parqueadero@redeban.com',
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarConfiguracion();
+  }
 
   @override
   void dispose() {
@@ -28,27 +43,86 @@ class _AdminConfigScreenState extends State<AdminConfigScreen> {
     super.dispose();
   }
 
-  void _guardarConfiguracion() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Row(
-          children: [
-            Icon(Icons.check_circle_rounded, color: Colors.white),
-            SizedBox(width: 10),
-            Text('Parámetros actualizados correctamente'),
-          ],
+  Future<void> _cargarConfiguracion() async {
+    try {
+      final ConfiguracionModel config = await _configService
+          .obtenerConfiguracion();
+      setState(() {
+        _maxHorasEstadia = config.tiempoMaximo;
+        _permitirReservasFuturas = config.permitirFestivos;
+        _toleranciaReserva = 15;
+        _isLoading = false;
+      });
+    } catch (error) {
+      setState(() {
+        _isLoading = false;
+      });
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('No se pudo cargar la configuración: $error'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
         ),
-        backgroundColor: const Color(0xFF10B981),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
+      );
+    }
+  }
+
+  Future<void> _guardarConfiguracion() async {
+    setState(() => _isSaving = true);
+
+    try {
+      final ConfiguracionModel actual = await _configService
+          .obtenerConfiguracion();
+      final ConfiguracionModel actualizado = actual.copyWith(
+        permitirFestivos: _permitirReservasFuturas,
+        tiempoMaximo: _maxHorasEstadia,
+      );
+
+      await _configService.actualizarConfiguracion(actualizado);
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Row(
+            children: [
+              Icon(Icons.check_circle_rounded, color: Colors.white),
+              SizedBox(width: 10),
+              Text('Parámetros actualizados correctamente'),
+            ],
+          ),
+          backgroundColor: const Color(0xFF10B981),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('No se pudo guardar la configuración: $error'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isDesktop = screenWidth > 900;
+
+    if (_isLoading) {
+      return const Scaffold(
+        backgroundColor: Color(0xFFF8FAFC),
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -67,9 +141,7 @@ class _AdminConfigScreenState extends State<AdminConfigScreen> {
               else
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    ..._buildHeaderContent(),
-                  ],
+                  children: [..._buildHeaderContent()],
                 ),
               const SizedBox(height: 20),
 
@@ -86,7 +158,11 @@ class _AdminConfigScreenState extends State<AdminConfigScreen> {
                 ),
                 child: const Row(
                   children: [
-                    Icon(Icons.workspace_premium_rounded, color: Colors.white, size: 32),
+                    Icon(
+                      Icons.workspace_premium_rounded,
+                      color: Colors.white,
+                      size: 32,
+                    ),
                     SizedBox(width: 16),
                     Expanded(
                       child: Column(
@@ -103,7 +179,10 @@ class _AdminConfigScreenState extends State<AdminConfigScreen> {
                           SizedBox(height: 2),
                           Text(
                             'El uso del parqueadero es exclusivo y sin costo para colaboradores autorizados. Las políticas aseguran disponibilidad equitativa.',
-                            style: TextStyle(fontSize: 12, color: Color(0xFFDBEAFE)),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFFDBEAFE),
+                            ),
                           ),
                         ],
                       ),
@@ -169,9 +248,21 @@ class _AdminConfigScreenState extends State<AdminConfigScreen> {
             borderRadius: BorderRadius.circular(10),
           ),
         ),
-        onPressed: _guardarConfiguracion,
-        icon: const Icon(Icons.save_rounded, size: 18),
-        label: const Text('Guardar Cambios', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+        onPressed: _isSaving ? null : _guardarConfiguracion,
+        icon: _isSaving
+            ? const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              )
+            : const Icon(Icons.save_rounded, size: 18),
+        label: Text(
+          _isSaving ? 'Guardando...' : 'Guardar Cambios',
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+        ),
       ),
     ];
   }
@@ -206,7 +297,11 @@ class _AdminConfigScreenState extends State<AdminConfigScreen> {
           // Tolerancia de reserva
           const Text(
             'Tiempo de Tolerancia en Reserva',
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF334155),
+            ),
           ),
           const SizedBox(height: 4),
           const Text(
@@ -219,7 +314,10 @@ class _AdminConfigScreenState extends State<AdminConfigScreen> {
             decoration: InputDecoration(
               filled: true,
               fillColor: const Color(0xFFF8FAFC),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 10,
+              ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
                 borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
@@ -228,7 +326,10 @@ class _AdminConfigScreenState extends State<AdminConfigScreen> {
             items: [5, 10, 15, 20, 30].map((int val) {
               return DropdownMenuItem<int>(
                 value: val,
-                child: Text('$val minutos', style: const TextStyle(fontSize: 13)),
+                child: Text(
+                  '$val minutos',
+                  style: const TextStyle(fontSize: 13),
+                ),
               );
             }).toList(),
             onChanged: (val) {
@@ -240,7 +341,11 @@ class _AdminConfigScreenState extends State<AdminConfigScreen> {
           // Tiempo Máximo
           const Text(
             'Límite Máximo de Estancia Continua',
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF334155),
+            ),
           ),
           const SizedBox(height: 4),
           const Text(
@@ -253,7 +358,10 @@ class _AdminConfigScreenState extends State<AdminConfigScreen> {
             decoration: InputDecoration(
               filled: true,
               fillColor: const Color(0xFFF8FAFC),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 10,
+              ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
                 borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
@@ -276,7 +384,11 @@ class _AdminConfigScreenState extends State<AdminConfigScreen> {
             contentPadding: EdgeInsets.zero,
             title: const Text(
               'Permitir Reservas Anticipadas',
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF334155),
+              ),
             ),
             subtitle: const Text(
               'Permite a los empleados agendar celdas para el día siguiente.',
@@ -307,7 +419,11 @@ class _AdminConfigScreenState extends State<AdminConfigScreen> {
             children: [
               const Row(
                 children: [
-                  Icon(Icons.notifications_active_outlined, color: Color(0xFF2563EB), size: 20),
+                  Icon(
+                    Icons.notifications_active_outlined,
+                    color: Color(0xFF2563EB),
+                    size: 20,
+                  ),
                   SizedBox(width: 8),
                   Text(
                     'Notificaciones del Sistema',
@@ -324,7 +440,11 @@ class _AdminConfigScreenState extends State<AdminConfigScreen> {
                 contentPadding: EdgeInsets.zero,
                 title: const Text(
                   'Aviso de Tolerancia por Vencer',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF334155),
+                  ),
                 ),
                 subtitle: const Text(
                   'Enviar notificación al usuario cuando queden 5 min de tolerancia.',
@@ -338,7 +458,11 @@ class _AdminConfigScreenState extends State<AdminConfigScreen> {
                 contentPadding: EdgeInsets.zero,
                 title: const Text(
                   'Alerta de Ocupación No Autorizada',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF334155),
+                  ),
                 ),
                 subtitle: const Text(
                   'Notificar a seguridad si una celda ocupada no tiene reserva activa.',
@@ -346,13 +470,18 @@ class _AdminConfigScreenState extends State<AdminConfigScreen> {
                 ),
                 value: _notificarOcupacionNoAutorizada,
                 activeColor: const Color(0xFF2563EB),
-                onChanged: (val) => setState(() => _notificarOcupacionNoAutorizada = val),
+                onChanged: (val) =>
+                    setState(() => _notificarOcupacionNoAutorizada = val),
               ),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 title: const Text(
                   'Resumen Diario por Correo',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF334155),
+                  ),
                 ),
                 subtitle: const Text(
                   'Enviar reporte automático al final de la jornada con la ocupación global.',
@@ -380,7 +509,11 @@ class _AdminConfigScreenState extends State<AdminConfigScreen> {
             children: [
               const Row(
                 children: [
-                  Icon(Icons.contact_support_outlined, color: Color(0xFF2563EB), size: 20),
+                  Icon(
+                    Icons.contact_support_outlined,
+                    color: Color(0xFF2563EB),
+                    size: 20,
+                  ),
                   SizedBox(width: 8),
                   Text(
                     'Canal de Soporte',
@@ -395,13 +528,21 @@ class _AdminConfigScreenState extends State<AdminConfigScreen> {
               const SizedBox(height: 12),
               const Text(
                 'Correo de Atención Administrativa',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF334155),
+                ),
               ),
               const SizedBox(height: 6),
               TextField(
                 controller: _soporteController,
                 decoration: InputDecoration(
-                  prefixIcon: const Icon(Icons.email_outlined, size: 18, color: Color(0xFF64748B)),
+                  prefixIcon: const Icon(
+                    Icons.email_outlined,
+                    size: 18,
+                    color: Color(0xFF64748B),
+                  ),
                   filled: true,
                   fillColor: const Color(0xFFF8FAFC),
                   contentPadding: const EdgeInsets.symmetric(vertical: 10),

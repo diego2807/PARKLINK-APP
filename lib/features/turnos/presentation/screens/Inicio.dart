@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../app_theme.dart';
+import '../../data/services/turno_service.dart';
 import 'AperturaTurno.dart';
 import 'Dashboard.dart';
 
@@ -11,14 +12,33 @@ class InicioScreen extends StatefulWidget {
 }
 
 class _InicioScreenState extends State<InicioScreen> {
-  // Simulación de estado de turno
-  final bool _turnoAbierto = false;
-  final String _nombreVigilante = "Andrés Gómez";
+  final TurnoService _turnoService = TurnoService();
+  bool _turnoAbierto = false;
+  bool _cargando = true;
+  final String _nombreVigilante = 'Vigilante';
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarEstadoTurno();
+  }
+
+  Future<void> _cargarEstadoTurno() async {
+    try {
+      _turnoAbierto = await _turnoService.tieneTurnoActivo();
+    } catch (_) {
+      _turnoAbierto = false;
+    } finally {
+      if (mounted) {
+        setState(() => _cargando = false);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final ahora = DateTime.now();
-    final fecha = "${ahora.day}/${ahora.month}/${ahora.year}";
+    final fecha = '${ahora.day}/${ahora.month}/${ahora.year}';
 
     return Scaffold(
       backgroundColor: AppTheme.bgLight,
@@ -26,11 +46,18 @@ class _InicioScreenState extends State<InicioScreen> {
         backgroundColor: AppTheme.primary,
         elevation: 0,
         automaticallyImplyLeading: false,
-        title: const Text("Parklink Vigilancia", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Parklink Vigilancia',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout, color: Colors.white),
-            onPressed: () => Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false),
+            onPressed: () => Navigator.pushNamedAndRemoveUntil(
+              context,
+              '/login',
+              (route) => false,
+            ),
           ),
         ],
       ),
@@ -46,24 +73,39 @@ class _InicioScreenState extends State<InicioScreen> {
                   children: [
                     CircleAvatar(
                       radius: 30,
-                      backgroundColor: AppTheme.primary.withOpacity(0.12),
-                      child: const Icon(Icons.shield_rounded, color: AppTheme.primary, size: 30),
+                      backgroundColor: AppTheme.primary.withValues(alpha: 0.12),
+                      child: const Icon(
+                        Icons.shield_rounded,
+                        color: AppTheme.primary,
+                        size: 30,
+                      ),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text("Hola, $_nombreVigilante", style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppTheme.textDark)),
-                          Text("Puesto de Vigilancia · $fecha", style: const TextStyle(fontSize: 13, color: AppTheme.textMuted)),
+                          Text(
+                            'Hola, $_nombreVigilante',
+                            style: const TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: AppTheme.textDark,
+                            ),
+                          ),
+                          Text(
+                            'Puesto de Vigilancia · $fecha',
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: AppTheme.textMuted,
+                            ),
+                          ),
                         ],
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 28),
-
-                // Tarjeta de estado del turno
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(22),
@@ -72,7 +114,9 @@ class _InicioScreenState extends State<InicioScreen> {
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: AppTheme.cardShadow,
                     border: Border.all(
-                      color: (_turnoAbierto ? AppTheme.success : AppTheme.warning).withOpacity(0.35),
+                      color:
+                          (_turnoAbierto ? AppTheme.success : AppTheme.warning)
+                              .withValues(alpha: 0.35),
                       width: 1.5,
                     ),
                   ),
@@ -84,49 +128,80 @@ class _InicioScreenState extends State<InicioScreen> {
                           Container(
                             padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(
-                              color: (_turnoAbierto ? AppTheme.success : AppTheme.warning).withOpacity(0.15),
+                              color:
+                                  (_turnoAbierto
+                                          ? AppTheme.success
+                                          : AppTheme.warning)
+                                      .withValues(alpha: 0.15),
                               shape: BoxShape.circle,
                             ),
                             child: Icon(
-                              _turnoAbierto ? Icons.lock_open_rounded : Icons.lock_clock_rounded,
-                              color: _turnoAbierto ? AppTheme.success : AppTheme.warning,
+                              _turnoAbierto
+                                  ? Icons.lock_open_rounded
+                                  : Icons.lock_clock_rounded,
+                              color: _turnoAbierto
+                                  ? AppTheme.success
+                                  : AppTheme.warning,
                             ),
                           ),
                           const SizedBox(width: 14),
                           Text(
-                            _turnoAbierto ? "Turno Activo" : "Turno Cerrado",
-                            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: AppTheme.textDark),
+                            _turnoAbierto ? 'Turno Activo' : 'Turno Cerrado',
+                            style: const TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.bold,
+                              color: AppTheme.textDark,
+                            ),
                           ),
                         ],
                       ),
                       const SizedBox(height: 10),
                       Text(
                         _turnoAbierto
-                            ? "Tu turno está en curso. Dirígete al panel de control para gestionar la garita."
-                            : "Debes abrir tu turno antes de registrar entradas, salidas o novedades.",
-                        style: const TextStyle(fontSize: 13, color: AppTheme.textMuted),
+                            ? 'Tu turno está en curso. Dirígete al panel de control para gestionar la garita.'
+                            : 'Debes abrir tu turno antes de registrar entradas, salidas o novedades.',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: AppTheme.textMuted,
+                        ),
                       ),
                       const SizedBox(height: 18),
                       SizedBox(
                         width: double.infinity,
                         height: 50,
                         child: ElevatedButton.icon(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => _turnoAbierto ? const VigilanteDashboardScreen() : const AperturaTurnoScreen(),
-                              ),
-                            );
-                          },
-                          icon: Icon(_turnoAbierto ? Icons.dashboard_rounded : Icons.play_arrow_rounded, color: Colors.white),
+                          onPressed: _cargando
+                              ? null
+                              : () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => _turnoAbierto
+                                          ? const VigilanteDashboardScreen()
+                                          : const AperturaTurnoScreen(),
+                                    ),
+                                  );
+                                },
+                          icon: Icon(
+                            _turnoAbierto
+                                ? Icons.dashboard_rounded
+                                : Icons.play_arrow_rounded,
+                            color: Colors.white,
+                          ),
                           label: Text(
-                            _turnoAbierto ? "Ir al Panel de Control" : "Abrir Turno",
-                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                            _turnoAbierto
+                                ? 'Ir al Panel de Control'
+                                : 'Abrir Turno',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppTheme.primary,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
                           ),
                         ),
                       ),
@@ -134,17 +209,37 @@ class _InicioScreenState extends State<InicioScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
-
-                // Resumen rápido del día
-                const Text("Resumen de Hoy", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.textDark)),
+                const Text(
+                  'Resumen de Hoy',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.textDark,
+                  ),
+                ),
                 const SizedBox(height: 12),
                 Row(
                   children: [
-                    _statCard("Vehículos Dentro", "12", Icons.directions_car_rounded, AppTheme.primary),
+                    _statCard(
+                      'Vehículos Dentro',
+                      _turnoAbierto ? '12' : '0',
+                      Icons.directions_car_rounded,
+                      AppTheme.primary,
+                    ),
                     const SizedBox(width: 12),
-                    _statCard("Novedades", "2", Icons.report_gmailerrorred_rounded, AppTheme.warning),
+                    _statCard(
+                      'Novedades',
+                      _turnoAbierto ? '2' : '0',
+                      Icons.report_gmailerrorred_rounded,
+                      AppTheme.warning,
+                    ),
                     const SizedBox(width: 12),
-                    _statCard("Visitantes", "4", Icons.badge_rounded, AppTheme.accent),
+                    _statCard(
+                      'Visitantes',
+                      _turnoAbierto ? '4' : '0',
+                      Icons.badge_rounded,
+                      AppTheme.accent,
+                    ),
                   ],
                 ),
               ],
@@ -168,9 +263,20 @@ class _InicioScreenState extends State<InicioScreen> {
           children: [
             Icon(icon, color: color, size: 22),
             const SizedBox(height: 8),
-            Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textDark)),
+            Text(
+              value,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.textDark,
+              ),
+            ),
             const SizedBox(height: 2),
-            Text(label, textAlign: TextAlign.center, style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
+            ),
           ],
         ),
       ),

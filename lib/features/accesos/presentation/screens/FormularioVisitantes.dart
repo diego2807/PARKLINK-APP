@@ -1,23 +1,26 @@
 import 'package:flutter/material.dart';
 import '../../../../app_theme.dart';
+import '../../data/services/visitante_service.dart';
 
 class FormularioVisitantesScreen extends StatefulWidget {
   const FormularioVisitantesScreen({Key? key}) : super(key: key);
 
   @override
-  State<FormularioVisitantesScreen> createState() => _FormularioVisitantesScreenState();
+  State<FormularioVisitantesScreen> createState() =>
+      _FormularioVisitantesScreenState();
 }
 
-class _FormularioVisitantesScreenState extends State<FormularioVisitantesScreen> {
+class _FormularioVisitantesScreenState
+    extends State<FormularioVisitantesScreen> {
   final _formKey = GlobalKey<FormState>();
-  
-  // Controladores para los campos del visitante
+  final _visitanteService = VisitanteService();
+
   final _nombreController = TextEditingController();
   final _documentoController = TextEditingController();
   final _placaController = TextEditingController();
   final _empresaController = TextEditingController();
   final _motivoController = TextEditingController();
-  
+
   String _tipoVehiculo = "Carro";
   bool _estaRegistrando = false;
 
@@ -31,31 +34,48 @@ class _FormularioVisitantesScreenState extends State<FormularioVisitantesScreen>
     super.dispose();
   }
 
-  void _registrarVisitante() {
-    if (_formKey.currentState!.validate()) {
-      setState(() => _estaRegistrando = true);
+  Future<void> _registrarVisitante() async {
+    if (!_formKey.currentState!.validate()) return;
 
-      // Simulamos un registro exitoso
-      Future.delayed(const Duration(seconds: 1), () {
+    setState(() => _estaRegistrando = true);
+
+    try {
+      final String areaVisitada = _empresaController.text.trim().isEmpty
+          ? 'No especificada'
+          : _empresaController.text.trim();
+
+      final String mensaje = await _visitanteService.registrarVisitante(
+        nombreCompleto: _nombreController.text.trim(),
+        documento: _documentoController.text.trim(),
+        placaVehiculo: _placaController.text.trim(),
+        areaVisitada: areaVisitada,
+        motivoVisita: _motivoController.text.trim(),
+      );
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(mensaje), backgroundColor: Colors.green),
+      );
+
+      _formKey.currentState!.reset();
+      _nombreController.clear();
+      _documentoController.clear();
+      _placaController.clear();
+      _empresaController.clear();
+      _motivoController.clear();
+      setState(() => _tipoVehiculo = "Carro");
+    } catch (e) {
+      if (!mounted) return;
+
+      final String detalle = e.toString().replaceFirst('Exception: ', '');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(detalle), backgroundColor: Colors.red),
+      );
+    } finally {
+      if (mounted) {
         setState(() => _estaRegistrando = false);
-        
-        // Mostrar mensaje de éxito
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("¡Visitante registrado con éxito! Acceso autorizado."),
-            backgroundColor: Colors.green,
-          ),
-        );
-
-        // Limpiar formulario
-        _formKey.currentState!.reset();
-        _nombreController.clear();
-        _documentoController.clear();
-        _placaController.clear();
-        _empresaController.clear();
-        _motivoController.clear();
-        setState(() => _tipoVehiculo = "Carro");
-      });
+      }
     }
   }
 
@@ -81,7 +101,6 @@ class _FormularioVisitantesScreenState extends State<FormularioVisitantesScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Tarjeta informativa superior
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
@@ -93,7 +112,11 @@ class _FormularioVisitantesScreenState extends State<FormularioVisitantesScreen>
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.badge_rounded, color: AppTheme.primary, size: 32),
+                        const Icon(
+                          Icons.badge_rounded,
+                          color: AppTheme.primary,
+                          size: 32,
+                        ),
                         const SizedBox(width: 16),
                         Expanded(
                           child: Column(
@@ -110,7 +133,10 @@ class _FormularioVisitantesScreenState extends State<FormularioVisitantesScreen>
                               SizedBox(height: 2),
                               Text(
                                 "Ingresa los datos correspondientes para registrar la entrada del visitante a las instalaciones de Redeban.",
-                                style: TextStyle(fontSize: 13, color: AppTheme.textMuted),
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: AppTheme.textMuted,
+                                ),
                               ),
                             ],
                           ),
@@ -122,11 +148,14 @@ class _FormularioVisitantesScreenState extends State<FormularioVisitantesScreen>
 
                   const Text(
                     "Información Personal",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textDark),
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.textDark,
+                    ),
                   ),
                   const SizedBox(height: 14),
 
-                  // Nombre Completo
                   TextFormField(
                     controller: _nombreController,
                     textCapitalization: TextCapitalization.words,
@@ -134,7 +163,9 @@ class _FormularioVisitantesScreenState extends State<FormularioVisitantesScreen>
                       labelText: "Nombre Completo del Visitante",
                       hintText: "ej. Carlos Andrés Pérez",
                       prefixIcon: const Icon(Icons.person_outline_rounded),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                       filled: true,
                       fillColor: Colors.white,
                     ),
@@ -147,7 +178,6 @@ class _FormularioVisitantesScreenState extends State<FormularioVisitantesScreen>
                   ),
                   const SizedBox(height: 14),
 
-                  // Número de Documento y Empresa
                   Row(
                     children: [
                       Expanded(
@@ -158,7 +188,9 @@ class _FormularioVisitantesScreenState extends State<FormularioVisitantesScreen>
                             labelText: "Número de Documento",
                             hintText: "ej. 10203040",
                             prefixIcon: const Icon(Icons.credit_card_rounded),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                             filled: true,
                             fillColor: Colors.white,
                           ),
@@ -178,7 +210,9 @@ class _FormularioVisitantesScreenState extends State<FormularioVisitantesScreen>
                             labelText: "Empresa de Procedencia",
                             hintText: "ej. Proveedor S.A.",
                             prefixIcon: const Icon(Icons.business_rounded),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                             filled: true,
                             fillColor: Colors.white,
                           ),
@@ -190,11 +224,14 @@ class _FormularioVisitantesScreenState extends State<FormularioVisitantesScreen>
 
                   const Text(
                     "Información del Vehículo / Ingreso",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textDark),
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.textDark,
+                    ),
                   ),
                   const SizedBox(height: 14),
 
-                  // Selector de tipo de vehículo
                   Row(
                     children: [
                       Expanded(
@@ -284,30 +321,35 @@ class _FormularioVisitantesScreenState extends State<FormularioVisitantesScreen>
                   ),
                   const SizedBox(height: 14),
 
-                  // Placa
                   TextFormField(
                     controller: _placaController,
                     textCapitalization: TextCapitalization.characters,
                     decoration: InputDecoration(
                       labelText: "Placa del Vehículo",
                       hintText: "ej. XYZ-789 (Opcional si viene a pie)",
-                      prefixIcon: const Icon(Icons.directions_car_filled_rounded),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      prefixIcon: const Icon(
+                        Icons.directions_car_filled_rounded,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                       filled: true,
                       fillColor: Colors.white,
                     ),
                   ),
                   const SizedBox(height: 14),
 
-                  // Motivo de Visita
                   TextFormField(
                     controller: _motivoController,
                     maxLines: 2,
                     decoration: InputDecoration(
                       labelText: "Motivo de la Visita",
-                      hintText: "ej. Reunión con el área de sistemas / Mantenimiento",
+                      hintText:
+                          "ej. Reunión con el área de sistemas / Mantenimiento",
                       prefixIcon: const Icon(Icons.notes_rounded),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                       filled: true,
                       fillColor: Colors.white,
                     ),
@@ -320,7 +362,6 @@ class _FormularioVisitantesScreenState extends State<FormularioVisitantesScreen>
                   ),
                   const SizedBox(height: 30),
 
-                  // Botón Registrar Acceso
                   SizedBox(
                     width: double.infinity,
                     height: 52,
@@ -328,14 +369,19 @@ class _FormularioVisitantesScreenState extends State<FormularioVisitantesScreen>
                       onPressed: _estaRegistrando ? null : _registrarVisitante,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppTheme.primary,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                         elevation: 0,
                       ),
                       child: _estaRegistrando
                           ? const SizedBox(
                               width: 24,
                               height: 24,
-                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2.5,
+                              ),
                             )
                           : const Text(
                               "Registrar Acceso de Visitante",

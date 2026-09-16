@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../app_theme.dart';
+import '../../data/services/turno_service.dart';
 import 'Dashboard.dart';
 
 class AperturaTurnoScreen extends StatefulWidget {
@@ -12,25 +13,58 @@ class AperturaTurnoScreen extends StatefulWidget {
 class _AperturaTurnoScreenState extends State<AperturaTurnoScreen> {
   final _formKey = GlobalKey<FormState>();
   final _notasController = TextEditingController();
+  final TurnoService _turnoService = TurnoService();
 
   String _puesto = "Puerta Principal";
   String _jornada = "Mañana (06:00 - 14:00)";
   bool _cargando = false;
 
-  final List<String> _puestos = ["Puerta Principal", "Sótano 1", "Sótano 2", "Torre A", "Torre B"];
-  final List<String> _jornadas = ["Mañana (06:00 - 14:00)", "Tarde (14:00 - 22:00)", "Noche (22:00 - 06:00)"];
+  final List<String> _puestos = [
+    "Puerta Principal",
+    "Sótano 1",
+    "Sótano 2",
+    "Torre A",
+    "Torre B",
+  ];
+  final List<String> _jornadas = [
+    "Mañana (06:00 - 14:00)",
+    "Tarde (14:00 - 22:00)",
+    "Noche (22:00 - 06:00)",
+  ];
 
-  void _iniciarTurno() async {
+  Future<void> _iniciarTurno() async {
     if (!_formKey.currentState!.validate()) return;
-    setState(() => _cargando = true);
-    await Future.delayed(const Duration(milliseconds: 900));
-    setState(() => _cargando = false);
 
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Turno iniciado correctamente"), backgroundColor: AppTheme.success),
-    );
-    Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const VigilanteDashboardScreen()));
+    setState(() => _cargando = true);
+
+    try {
+      final resultado = await _turnoService.abrirTurno();
+
+      if (!mounted) return;
+
+      final mensaje = resultado.yaExistiaTurno
+          ? 'Ya había un turno abierto para este vigilante.'
+          : resultado.mensaje;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(mensaje), backgroundColor: AppTheme.success),
+      );
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const VigilanteDashboardScreen()),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      final mensaje = e.toString().replaceFirst('Exception: ', '');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(mensaje), backgroundColor: Colors.red),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _cargando = false);
+      }
+    }
   }
 
   @override
@@ -46,7 +80,10 @@ class _AperturaTurnoScreenState extends State<AperturaTurnoScreen> {
       appBar: AppBar(
         backgroundColor: AppTheme.primary,
         elevation: 0,
-        title: const Text("Apertura de Turno", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: const Text(
+          "Apertura de Turno",
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
       ),
       body: Center(
         child: Container(
@@ -61,17 +98,23 @@ class _AperturaTurnoScreenState extends State<AperturaTurnoScreen> {
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: AppTheme.primary.withOpacity(0.06),
+                      color: AppTheme.primary.withValues(alpha: 0.06),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.info_outline_rounded, color: AppTheme.primary),
+                        const Icon(
+                          Icons.info_outline_rounded,
+                          color: AppTheme.primary,
+                        ),
                         const SizedBox(width: 12),
                         const Expanded(
                           child: Text(
                             "Verifica los datos antes de iniciar tu turno. Esta acción quedará registrada con fecha y hora.",
-                            style: TextStyle(fontSize: 12.5, color: AppTheme.textDark),
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              color: AppTheme.textDark,
+                            ),
                           ),
                         ),
                       ],
@@ -88,26 +131,57 @@ class _AperturaTurnoScreenState extends State<AperturaTurnoScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text("Datos del Turno", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.textDark)),
+                        const Text(
+                          "Datos del Turno",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.textDark,
+                          ),
+                        ),
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
-                          value: _puesto,
-                          decoration: AppTheme.inputStyle("Puesto asignado", Icons.location_on_outlined),
-                          items: _puestos.map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(),
+                          initialValue: _puesto,
+                          decoration: AppTheme.inputStyle(
+                            "Puesto asignado",
+                            Icons.location_on_outlined,
+                          ),
+                          items: _puestos
+                              .map(
+                                (p) =>
+                                    DropdownMenuItem(value: p, child: Text(p)),
+                              )
+                              .toList(),
                           onChanged: (val) => setState(() => _puesto = val!),
                         ),
                         const SizedBox(height: 14),
                         DropdownButtonFormField<String>(
-                          value: _jornada,
-                          decoration: AppTheme.inputStyle("Jornada", Icons.schedule_rounded),
-                          items: _jornadas.map((j) => DropdownMenuItem(value: j, child: Text(j, style: const TextStyle(fontSize: 13)))).toList(),
+                          initialValue: _jornada,
+                          decoration: AppTheme.inputStyle(
+                            "Jornada",
+                            Icons.schedule_rounded,
+                          ),
+                          items: _jornadas
+                              .map(
+                                (j) => DropdownMenuItem(
+                                  value: j,
+                                  child: Text(
+                                    j,
+                                    style: const TextStyle(fontSize: 13),
+                                  ),
+                                ),
+                              )
+                              .toList(),
                           onChanged: (val) => setState(() => _jornada = val!),
                         ),
                         const SizedBox(height: 14),
                         TextFormField(
                           controller: _notasController,
                           maxLines: 3,
-                          decoration: AppTheme.inputStyle("Observaciones iniciales (opcional)", Icons.notes_rounded),
+                          decoration: AppTheme.inputStyle(
+                            "Observaciones iniciales (opcional)",
+                            Icons.notes_rounded,
+                          ),
                         ),
                       ],
                     ),
@@ -120,11 +194,27 @@ class _AperturaTurnoScreenState extends State<AperturaTurnoScreen> {
                       onPressed: _cargando ? null : _iniciarTurno,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppTheme.success,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
                       ),
                       child: _cargando
-                          ? const SizedBox(height: 22, width: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
-                          : const Text("Iniciar Turno", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                          ? const SizedBox(
+                              height: 22,
+                              width: 22,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2.5,
+                              ),
+                            )
+                          : const Text(
+                              "Iniciar Turno",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
                     ),
                   ),
                 ],

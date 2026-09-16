@@ -1,35 +1,32 @@
 import 'package:flutter/material.dart';
 import '../../../../app_theme.dart';
+import '../../data/services/acceso_service.dart';
+import '../../domain/models/vehiculo_activo_model.dart';
 
 class ListaVehiculosActivoScreen extends StatefulWidget {
   const ListaVehiculosActivoScreen({Key? key}) : super(key: key);
 
   @override
-  State<ListaVehiculosActivoScreen> createState() => _ListaVehiculosActivoScreenState();
+  State<ListaVehiculosActivoScreen> createState() =>
+      _ListaVehiculosActivoScreenState();
 }
 
-class _ListaVehiculosActivoScreenState extends State<ListaVehiculosActivoScreen> {
-  // Lista dinámica de vehículos
-  final List<Map<String, String>> vehiculos = [
-    {
-      "placa": "ABC-123",
-      "marca": "Mazda 3 - Gris",
-      "tipo": "Carro",
-      "principal": "Sí"
-    },
-    {
-      "placa": "XYZ-987",
-      "marca": "Yamaha FZ - Negra",
-      "tipo": "Moto",
-      "principal": "No"
-    },
-  ];
-
-  // Controladores para el formulario de nuevo vehículo
+class _ListaVehiculosActivoScreenState
+    extends State<ListaVehiculosActivoScreen> {
+  final AccesoService _accesoService = AccesoService();
+  final List<Map<String, String>> vehiculos = <Map<String, String>>[];
   final _formKey = GlobalKey<FormState>();
   final _placaController = TextEditingController();
   final _marcaController = TextEditingController();
-  String _tipoSeleccionado = "Carro";
+  bool _cargando = false;
+  String _error = '';
+  String _tipoSeleccionado = 'Carro';
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarVehiculosActivos();
+  }
 
   @override
   void dispose() {
@@ -38,18 +35,60 @@ class _ListaVehiculosActivoScreenState extends State<ListaVehiculosActivoScreen>
     super.dispose();
   }
 
-  // Método para eliminar un vehículo
+  Future<void> _cargarVehiculosActivos() async {
+    setState(() {
+      _cargando = true;
+      _error = '';
+    });
+
+    try {
+      final List<VehiculoActivoModel> activos = await _accesoService
+          .obtenerVehiculosActivosSeguro();
+
+      if (!mounted) return;
+
+      setState(() {
+        vehiculos
+          ..clear()
+          ..addAll(
+            activos.map(
+              (vehiculo) => {
+                'placa': vehiculo.placa,
+                'marca': vehiculo.tipoVehiculo,
+                'tipo': vehiculo.tipoCorto,
+                'principal': 'Sí',
+              },
+            ),
+          );
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString().replaceFirst('Exception: ', '');
+      });
+    } finally {
+      if (mounted) {
+        setState(() => _cargando = false);
+      }
+    }
+  }
+
   void _eliminarVehiculo(int index) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text("Confirmar eliminación"),
-        content: Text("¿Deseas eliminar el vehículo ${vehiculos[index]['placa']}?"),
+        title: const Text('Confirmar eliminación'),
+        content: Text(
+          '¿Deseas eliminar el vehículo ${vehiculos[index]['placa']}?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text("Cancelar", style: TextStyle(color: AppTheme.textMuted)),
+            child: const Text(
+              'Cancelar',
+              style: TextStyle(color: AppTheme.textMuted),
+            ),
           ),
           ElevatedButton(
             onPressed: () {
@@ -58,25 +97,31 @@ class _ListaVehiculosActivoScreenState extends State<ListaVehiculosActivoScreen>
               });
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("Vehículo eliminado exitosamente")),
+                const SnackBar(
+                  content: Text('Vehículo eliminado exitosamente'),
+                ),
               );
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.redAccent,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
-            child: const Text("Eliminar", style: TextStyle(color: Colors.white)),
+            child: const Text(
+              'Eliminar',
+              style: TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
     );
   }
 
-  // Modal para agregar un nuevo vehículo
   void _mostrarModalAgregar() {
     _placaController.clear();
     _marcaController.clear();
-    _tipoSeleccionado = "Carro";
+    _tipoSeleccionado = 'Carro';
 
     showModalBottomSheet(
       context: context,
@@ -114,7 +159,7 @@ class _ListaVehiculosActivoScreenState extends State<ListaVehiculosActivoScreen>
                     ),
                     const SizedBox(height: 16),
                     const Text(
-                      "Registrar Nuevo Vehículo",
+                      'Registrar Nuevo Vehículo',
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -123,25 +168,25 @@ class _ListaVehiculosActivoScreenState extends State<ListaVehiculosActivoScreen>
                     ),
                     const SizedBox(height: 6),
                     const Text(
-                      "Ingresa los datos del vehículo corporativo o personal",
+                      'Ingresa los datos del vehículo corporativo o personal',
                       style: TextStyle(fontSize: 13, color: AppTheme.textMuted),
                     ),
                     const SizedBox(height: 20),
-
-                    // Selector de tipo (Carro / Moto)
                     Row(
                       children: [
                         Expanded(
                           child: InkWell(
-                            onTap: () => setModalState(() => _tipoSeleccionado = "Carro"),
+                            onTap: () => setModalState(
+                              () => _tipoSeleccionado = 'Carro',
+                            ),
                             child: Container(
                               padding: const EdgeInsets.symmetric(vertical: 12),
                               decoration: BoxDecoration(
-                                color: _tipoSeleccionado == "Carro"
+                                color: _tipoSeleccionado == 'Carro'
                                     ? AppTheme.primary.withValues(alpha: 0.1)
                                     : Colors.grey[100],
                                 border: Border.all(
-                                  color: _tipoSeleccionado == "Carro"
+                                  color: _tipoSeleccionado == 'Carro'
                                       ? AppTheme.primary
                                       : Colors.grey[300]!,
                                   width: 1.5,
@@ -153,16 +198,16 @@ class _ListaVehiculosActivoScreenState extends State<ListaVehiculosActivoScreen>
                                 children: [
                                   Icon(
                                     Icons.directions_car_rounded,
-                                    color: _tipoSeleccionado == "Carro"
+                                    color: _tipoSeleccionado == 'Carro'
                                         ? AppTheme.primary
                                         : AppTheme.textMuted,
                                   ),
                                   const SizedBox(width: 8),
                                   Text(
-                                    "Carro",
+                                    'Carro',
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
-                                      color: _tipoSeleccionado == "Carro"
+                                      color: _tipoSeleccionado == 'Carro'
                                           ? AppTheme.primary
                                           : AppTheme.textMuted,
                                     ),
@@ -175,15 +220,16 @@ class _ListaVehiculosActivoScreenState extends State<ListaVehiculosActivoScreen>
                         const SizedBox(width: 12),
                         Expanded(
                           child: InkWell(
-                            onTap: () => setModalState(() => _tipoSeleccionado = "Moto"),
+                            onTap: () =>
+                                setModalState(() => _tipoSeleccionado = 'Moto'),
                             child: Container(
                               padding: const EdgeInsets.symmetric(vertical: 12),
                               decoration: BoxDecoration(
-                                color: _tipoSeleccionado == "Moto"
+                                color: _tipoSeleccionado == 'Moto'
                                     ? AppTheme.primary.withValues(alpha: 0.1)
                                     : Colors.grey[100],
                                 border: Border.all(
-                                  color: _tipoSeleccionado == "Moto"
+                                  color: _tipoSeleccionado == 'Moto'
                                       ? AppTheme.primary
                                       : Colors.grey[300]!,
                                   width: 1.5,
@@ -195,16 +241,16 @@ class _ListaVehiculosActivoScreenState extends State<ListaVehiculosActivoScreen>
                                 children: [
                                   Icon(
                                     Icons.two_wheeler_rounded,
-                                    color: _tipoSeleccionado == "Moto"
+                                    color: _tipoSeleccionado == 'Moto'
                                         ? AppTheme.primary
                                         : AppTheme.textMuted,
                                   ),
                                   const SizedBox(width: 8),
                                   Text(
-                                    "Moto",
+                                    'Moto',
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
-                                      color: _tipoSeleccionado == "Moto"
+                                      color: _tipoSeleccionado == 'Moto'
                                           ? AppTheme.primary
                                           : AppTheme.textMuted,
                                     ),
@@ -217,45 +263,43 @@ class _ListaVehiculosActivoScreenState extends State<ListaVehiculosActivoScreen>
                       ],
                     ),
                     const SizedBox(height: 16),
-
-                    // Campo Placa
                     TextFormField(
                       controller: _placaController,
                       textCapitalization: TextCapitalization.characters,
                       decoration: InputDecoration(
-                        labelText: "Placa del Vehículo",
-                        hintText: "ej. ABC-123",
+                        labelText: 'Placa del Vehículo',
+                        hintText: 'ej. ABC-123',
                         prefixIcon: const Icon(Icons.badge_outlined),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                       validator: (val) {
                         if (val == null || val.trim().isEmpty) {
-                          return "Por favor ingresa la placa";
+                          return 'Por favor ingresa la placa';
                         }
                         return null;
                       },
                     ),
                     const SizedBox(height: 14),
-
-                    // Campo Marca / Modelo
                     TextFormField(
                       controller: _marcaController,
                       decoration: InputDecoration(
-                        labelText: "Marca y Color",
-                        hintText: "ej. Mazda 3 - Gris",
+                        labelText: 'Marca y Color',
+                        hintText: 'ej. Mazda 3 - Gris',
                         prefixIcon: const Icon(Icons.time_to_leave_outlined),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                       validator: (val) {
                         if (val == null || val.trim().isEmpty) {
-                          return "Por favor ingresa la marca/color";
+                          return 'Por favor ingresa la marca/color';
                         }
                         return null;
                       },
                     ),
                     const SizedBox(height: 24),
-
-                    // Botón Guardar
                     SizedBox(
                       width: double.infinity,
                       height: 50,
@@ -264,25 +308,35 @@ class _ListaVehiculosActivoScreenState extends State<ListaVehiculosActivoScreen>
                           if (_formKey.currentState!.validate()) {
                             setState(() {
                               vehiculos.add({
-                                "placa": _placaController.text.toUpperCase().trim(),
-                                "marca": _marcaController.text.trim(),
-                                "tipo": _tipoSeleccionado,
-                                "principal": vehiculos.isEmpty ? "Sí" : "No",
+                                'placa': _placaController.text
+                                    .toUpperCase()
+                                    .trim(),
+                                'marca': _marcaController.text.trim(),
+                                'tipo': _tipoSeleccionado,
+                                'principal': vehiculos.isEmpty ? 'Sí' : 'No',
                               });
                             });
                             Navigator.pop(context);
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text("Vehículo registrado con éxito")),
+                              const SnackBar(
+                                content: Text('Vehículo registrado con éxito'),
+                              ),
                             );
                           }
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppTheme.primary,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                         child: const Text(
-                          "Guardar Vehículo",
-                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                          'Guardar Vehículo',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
                         ),
                       ),
                     ),
@@ -303,13 +357,19 @@ class _ListaVehiculosActivoScreenState extends State<ListaVehiculosActivoScreen>
       appBar: AppBar(
         backgroundColor: AppTheme.primary,
         elevation: 0,
-        title: const Text("Mis Vehículos", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Mis Vehículos',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _mostrarModalAgregar,
         backgroundColor: AppTheme.primary,
         icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: const Text("Agregar Vehículo", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        label: const Text(
+          'Agregar Vehículo',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
       ),
       body: Center(
         child: Container(
@@ -326,56 +386,100 @@ class _ListaVehiculosActivoScreenState extends State<ListaVehiculosActivoScreen>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          "Vehículos Registrados",
-                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.textDark),
+                          'Vehículos Registrados',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.textDark,
+                          ),
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          "Tienes ${vehiculos.length} vehículo(s) activo(s)",
-                          style: const TextStyle(fontSize: 13, color: AppTheme.textMuted),
+                          'Tienes ${vehiculos.length} vehículo(s) activo(s)',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: AppTheme.textMuted,
+                          ),
                         ),
                       ],
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: AppTheme.primary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
-                        "${vehiculos.length} / 3 Máx",
-                        style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold, fontSize: 12),
+                        '${vehiculos.length} / 3 Máx',
+                        style: const TextStyle(
+                          color: AppTheme.primary,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
               Expanded(
-                child: vehiculos.isEmpty
+                child: _cargando
+                    ? const Center(child: CircularProgressIndicator())
+                    : _error.isNotEmpty
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Text(
+                            _error,
+                            style: const TextStyle(color: AppTheme.textMuted),
+                          ),
+                        ),
+                      )
+                    : vehiculos.isEmpty
                     ? Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.directions_car_outlined, size: 64, color: Colors.grey[400]),
+                            Icon(
+                              Icons.directions_car_outlined,
+                              size: 64,
+                              color: Colors.grey[400],
+                            ),
                             const SizedBox(height: 12),
-                            const Text("No tienes vehículos registrados", style: TextStyle(fontSize: 16, color: AppTheme.textMuted)),
+                            const Text(
+                              'No tienes vehículos registrados',
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: AppTheme.textMuted,
+                              ),
+                            ),
                             const SizedBox(height: 8),
                             ElevatedButton.icon(
                               onPressed: _mostrarModalAgregar,
                               icon: const Icon(Icons.add, color: Colors.white),
-                              label: const Text("Registrar primero", style: TextStyle(color: Colors.white)),
-                              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary),
+                              label: const Text(
+                                'Registrar primero',
+                                style: TextStyle(color: Colors.white),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppTheme.primary,
+                              ),
                             ),
                           ],
                         ),
                       )
                     : ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 8,
+                        ),
                         itemCount: vehiculos.length,
                         itemBuilder: (context, index) {
                           final v = vehiculos[index];
-                          bool esCarro = v["tipo"] == "Carro";
-                          bool esPrincipal = v["principal"] == "Sí";
+                          final bool esCarro = v['tipo'] == 'Carro';
+                          final bool esPrincipal = v['principal'] == 'Sí';
 
                           return Container(
                             margin: const EdgeInsets.only(bottom: 16),
@@ -391,7 +495,9 @@ class _ListaVehiculosActivoScreenState extends State<ListaVehiculosActivoScreen>
                                 ),
                               ],
                               border: Border.all(
-                                color: esPrincipal ? AppTheme.primary.withValues(alpha: 0.3) : Colors.transparent,
+                                color: esPrincipal
+                                    ? AppTheme.primary.withValues(alpha: 0.3)
+                                    : Colors.transparent,
                                 width: 1.5,
                               ),
                             ),
@@ -400,24 +506,33 @@ class _ListaVehiculosActivoScreenState extends State<ListaVehiculosActivoScreen>
                                 Container(
                                   padding: const EdgeInsets.all(14),
                                   decoration: BoxDecoration(
-                                    color: esCarro ? AppTheme.primary.withValues(alpha: 0.1) : Colors.orange.withValues(alpha: 0.1),
+                                    color: esCarro
+                                        ? AppTheme.primary.withValues(
+                                            alpha: 0.1,
+                                          )
+                                        : Colors.orange.withValues(alpha: 0.1),
                                     borderRadius: BorderRadius.circular(14),
                                   ),
                                   child: Icon(
-                                    esCarro ? Icons.directions_car_rounded : Icons.two_wheeler_rounded,
-                                    color: esCarro ? AppTheme.primary : Colors.orange[800],
+                                    esCarro
+                                        ? Icons.directions_car_rounded
+                                        : Icons.two_wheeler_rounded,
+                                    color: esCarro
+                                        ? AppTheme.primary
+                                        : Colors.orange[800],
                                     size: 30,
                                   ),
                                 ),
                                 const SizedBox(width: 16),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Row(
                                         children: [
                                           Text(
-                                            v["placa"]!,
+                                            v['placa']!,
                                             style: const TextStyle(
                                               fontWeight: FontWeight.bold,
                                               fontSize: 18,
@@ -427,13 +542,20 @@ class _ListaVehiculosActivoScreenState extends State<ListaVehiculosActivoScreen>
                                           const SizedBox(width: 8),
                                           if (esPrincipal)
                                             Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 10,
+                                                    vertical: 3,
+                                                  ),
                                               decoration: BoxDecoration(
-                                                color: Colors.green.withValues(alpha: 0.15),
-                                                borderRadius: BorderRadius.circular(12),
+                                                color: Colors.green.withValues(
+                                                  alpha: 0.15,
+                                                ),
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
                                               ),
                                               child: const Text(
-                                                "Principal",
+                                                'Principal',
                                                 style: TextStyle(
                                                   fontSize: 11,
                                                   color: Colors.green,
@@ -445,15 +567,21 @@ class _ListaVehiculosActivoScreenState extends State<ListaVehiculosActivoScreen>
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
-                                        "${v['tipo']} • ${v['marca']}",
-                                        style: const TextStyle(fontSize: 13, color: AppTheme.textMuted),
+                                        '${v['tipo']} • ${v['marca']}',
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          color: AppTheme.textMuted,
+                                        ),
                                       ),
                                     ],
                                   ),
                                 ),
                                 IconButton(
-                                  icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent),
-                                  tooltip: "Eliminar vehículo",
+                                  icon: const Icon(
+                                    Icons.delete_outline_rounded,
+                                    color: Colors.redAccent,
+                                  ),
+                                  tooltip: 'Eliminar vehículo',
                                   onPressed: () => _eliminarVehiculo(index),
                                 ),
                               ],

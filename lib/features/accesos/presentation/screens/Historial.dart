@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../app_theme.dart';
+import '../../data/services/acceso_service.dart';
+import '../../domain/models/acceso_model.dart';
 
 class HistorialScreen extends StatefulWidget {
   const HistorialScreen({Key? key}) : super(key: key);
@@ -9,46 +11,49 @@ class HistorialScreen extends StatefulWidget {
 }
 
 class _HistorialScreenState extends State<HistorialScreen> {
-  // Lista de registros de historial simulados
-  final List<Map<String, String>> historial = [
-    {
-      "placa": "ABC-123",
-      "tipo": "Entrada",
-      "fecha": "15 Sep 2026",
-      "hora": "08:30 AM",
-      "ubicacion": "Parqueadero Principal - Espacio 12"
-    },
-    {
-      "placa": "XYZ-987",
-      "tipo": "Salida",
-      "fecha": "14 Sep 2026",
-      "hora": "05:45 PM",
-      "ubicacion": "Parqueadero Norte - Espacio 04"
-    },
-    {
-      "placa": "ABC-123",
-      "tipo": "Salida",
-      "fecha": "14 Sep 2026",
-      "hora": "06:15 PM",
-      "ubicacion": "Parqueadero Principal - Espacio 12"
-    },
-    {
-      "placa": "JKL-456",
-      "tipo": "Entrada",
-      "fecha": "14 Sep 2026",
-      "hora": "09:00 AM",
-      "ubicacion": "Parqueadero Visitantes - Espacio 02"
-    },
-  ];
+  final AccesoService _accesoService = AccesoService();
+  List<AccesoModel> _historial = <AccesoModel>[];
+  bool _cargando = true;
+  String _error = '';
+  String _filtroSeleccionado = 'Todos';
 
-  String _filtroSeleccionado = "Todos";
+  @override
+  void initState() {
+    super.initState();
+    _cargarHistorial();
+  }
+
+  Future<void> _cargarHistorial() async {
+    setState(() {
+      _cargando = true;
+      _error = '';
+    });
+
+    try {
+      final historial = await _accesoService.obtenerHistorialGlobal();
+      if (!mounted) return;
+      setState(() {
+        _historial = historial;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString().replaceFirst('Exception: ', '');
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _cargando = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    // Filtrar la lista según el botón seleccionado
-    final historialFiltrado = historial.where((item) {
-      if (_filtroSeleccionado == "Todos") return true;
-      return item["tipo"] == _filtroSeleccionado;
+    final historialFiltrado = _historial.where((item) {
+      if (_filtroSeleccionado == 'Todos') return true;
+      return item.coincideConFiltro(_filtroSeleccionado);
     }).toList();
 
     return Scaffold(
@@ -67,7 +72,6 @@ class _HistorialScreenState extends State<HistorialScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Encabezado y Filtros
               Padding(
                 padding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
                 child: Column(
@@ -87,43 +91,62 @@ class _HistorialScreenState extends State<HistorialScreen> {
                       style: TextStyle(fontSize: 13, color: AppTheme.textMuted),
                     ),
                     const SizedBox(height: 16),
-
-                    // Botones de filtro
                     Row(
                       children: [
-                        _buildFiltroBoton("Todos"),
+                        _buildFiltroBoton('Todos'),
                         const SizedBox(width: 8),
-                        _buildFiltroBoton("Entrada"),
+                        _buildFiltroBoton('Entrada'),
                         const SizedBox(width: 8),
-                        _buildFiltroBoton("Salida"),
+                        _buildFiltroBoton('Salida'),
                       ],
                     ),
                   ],
                 ),
               ),
-
-              // Lista de Historial
               Expanded(
-                child: historialFiltrado.isEmpty
+                child: _cargando
+                    ? const Center(child: CircularProgressIndicator())
+                    : _error.isNotEmpty
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Text(
+                            _error,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(color: AppTheme.textMuted),
+                          ),
+                        ),
+                      )
+                    : historialFiltrado.isEmpty
                     ? Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.history_toggle_off_rounded, size: 64, color: Colors.grey[400]),
+                            Icon(
+                              Icons.history_toggle_off_rounded,
+                              size: 64,
+                              color: Colors.grey[400],
+                            ),
                             const SizedBox(height: 12),
                             const Text(
                               "No hay registros para este filtro",
-                              style: TextStyle(fontSize: 16, color: AppTheme.textMuted),
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: AppTheme.textMuted,
+                              ),
                             ),
                           ],
                         ),
                       )
                     : ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 8,
+                        ),
                         itemCount: historialFiltrado.length,
                         itemBuilder: (context, index) {
                           final item = historialFiltrado[index];
-                          bool esEntrada = item["tipo"] == "Entrada";
+                          final bool esEntrada = item.esEntrada;
 
                           return Container(
                             margin: const EdgeInsets.only(bottom: 12),
@@ -141,7 +164,6 @@ class _HistorialScreenState extends State<HistorialScreen> {
                             ),
                             child: Row(
                               children: [
-                                // Icono indicativo de Entrada o Salida
                                 Container(
                                   padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
@@ -154,22 +176,24 @@ class _HistorialScreenState extends State<HistorialScreen> {
                                     esEntrada
                                         ? Icons.login_rounded
                                         : Icons.logout_rounded,
-                                    color: esEntrada ? Colors.green : Colors.orange[800],
+                                    color: esEntrada
+                                        ? Colors.green
+                                        : Colors.orange[800],
                                     size: 24,
                                   ),
                                 ),
                                 const SizedBox(width: 16),
-
-                                // Detalles del movimiento
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
                                         children: [
                                           Text(
-                                            item["placa"]!,
+                                            item.placa,
                                             style: const TextStyle(
                                               fontWeight: FontWeight.bold,
                                               fontSize: 16,
@@ -177,7 +201,7 @@ class _HistorialScreenState extends State<HistorialScreen> {
                                             ),
                                           ),
                                           Text(
-                                            "${item['fecha']} • ${item['hora']}",
+                                            '${item.fechaTexto} • ${item.horaTexto}',
                                             style: const TextStyle(
                                               fontSize: 12,
                                               color: AppTheme.textMuted,
@@ -187,7 +211,9 @@ class _HistorialScreenState extends State<HistorialScreen> {
                                       ),
                                       const SizedBox(height: 6),
                                       Text(
-                                        item["ubicacion"]!,
+                                        item.celdaTexto == 'N/A'
+                                            ? item.tipoMovimiento
+                                            : '${item.tipoMovimiento} • ${item.celdaTexto}',
                                         style: const TextStyle(
                                           fontSize: 13,
                                           color: AppTheme.textMuted,
@@ -209,9 +235,8 @@ class _HistorialScreenState extends State<HistorialScreen> {
     );
   }
 
-  // Widget auxiliar para los botones de filtro superiores
   Widget _buildFiltroBoton(String titulo) {
-    bool seleccionado = _filtroSeleccionado == titulo;
+    final bool seleccionado = _filtroSeleccionado == titulo;
     return Expanded(
       child: InkWell(
         onTap: () {

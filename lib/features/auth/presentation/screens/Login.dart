@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../../../app_theme.dart';
+import '../../../../app_theme.dart';
+import '../../data/services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -9,6 +10,7 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  final AuthService _authService = AuthService();
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -22,39 +24,29 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _handleLogin() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() => _isLoading = true);
+  Future<void> _handleLogin() async {
+    if (!_formKey.currentState!.validate()) return;
 
-      try {
-        // Simulación de respuesta de autenticación
-        await Future.delayed(const Duration(seconds: 1));
+    setState(() => _isLoading = true);
 
-        if (!mounted) return;
+    try {
+      final response = await _authService.login(
+        correo: _emailController.text,
+        password: _passwordController.text,
+      );
 
-        final email = _emailController.text.trim().toLowerCase();
+      if (!mounted) return;
 
-        // Lógica de redirección basada en el rol según el correo ingresado
-        if (email.contains('admin')) {
-          Navigator.pushReplacementNamed(context, '/admin/dashboard');
-        } else if (email.contains('vigilante') || email.contains('guard')) {
-          Navigator.pushReplacementNamed(context, '/vigilante/inicio');
-        } else {
-          Navigator.pushReplacementNamed(context, '/user/dashboard');
-        }
-        
-      } catch (e) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Error al iniciar sesión: $e"),
-            backgroundColor: Colors.red,
-          ),
-        );
-      } finally {
-        if (mounted) {
-          setState(() => _isLoading = false);
-        }
+      Navigator.pushReplacementNamed(context, response.rutaInicial);
+    } catch (e) {
+      if (!mounted) return;
+      final mensaje = e.toString().replaceFirst('Exception: ', '');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(mensaje), backgroundColor: Colors.red),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
       }
     }
   }
@@ -123,7 +115,9 @@ class _LoginScreenState extends State<LoginScreen> {
               Navigator.pop(dialogContext);
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                  content: Text("Se han enviado las instrucciones a tu correo."),
+                  content: Text(
+                    "Se han enviado las instrucciones a tu correo.",
+                  ),
                   backgroundColor: AppTheme.success,
                 ),
               );
@@ -155,17 +149,17 @@ class _LoginScreenState extends State<LoginScreen> {
         height: double.infinity,
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [
-              AppTheme.primaryDark,
-              AppTheme.primary,
-            ],
+            colors: [AppTheme.primaryDark, AppTheme.primary],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
         ),
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 40.0),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 24.0,
+              vertical: 40.0,
+            ),
             child: Container(
               // Limita el ancho máximo para evitar que se distorsione en web
               constraints: const BoxConstraints(maxWidth: 420),
@@ -214,10 +208,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 6),
                     const Text(
                       "Gestión de Parqueaderos Redeban",
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: AppTheme.textMuted,
-                      ),
+                      style: TextStyle(fontSize: 14, color: AppTheme.textMuted),
                     ),
                     const SizedBox(height: 32),
 
@@ -225,7 +216,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     TextFormField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
-                      style: const TextStyle(fontSize: 15, color: AppTheme.textDark),
+                      style: const TextStyle(
+                        fontSize: 15,
+                        color: AppTheme.textDark,
+                      ),
                       decoration: AppTheme.inputStyle(
                         "Correo corporativo",
                         Icons.email_outlined,
@@ -235,7 +229,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           return "Ingresa tu correo";
                         }
                         // Validación de formato de correo básico
-                        final emailRegExp = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+                        final emailRegExp = RegExp(
+                          r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                        );
                         if (!emailRegExp.hasMatch(value.trim())) {
                           return "Ingresa un correo electrónico válido";
                         }
@@ -248,21 +244,29 @@ class _LoginScreenState extends State<LoginScreen> {
                     TextFormField(
                       controller: _passwordController,
                       obscureText: _obscurePassword,
-                      style: const TextStyle(fontSize: 15, color: AppTheme.textDark),
-                      decoration: AppTheme.inputStyle(
-                        "Contraseña",
-                        Icons.lock_outline,
-                      ).copyWith(
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                            color: AppTheme.textMuted,
-                          ),
-                          onPressed: () {
-                            setState(() => _obscurePassword = !_obscurePassword);
-                          },
-                        ),
+                      style: const TextStyle(
+                        fontSize: 15,
+                        color: AppTheme.textDark,
                       ),
+                      decoration:
+                          AppTheme.inputStyle(
+                            "Contraseña",
+                            Icons.lock_outline,
+                          ).copyWith(
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _obscurePassword
+                                    ? Icons.visibility_off
+                                    : Icons.visibility,
+                                color: AppTheme.textMuted,
+                              ),
+                              onPressed: () {
+                                setState(
+                                  () => _obscurePassword = !_obscurePassword,
+                                );
+                              },
+                            ),
+                          ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return "Ingresa tu contraseña";

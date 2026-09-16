@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../app_theme.dart';
+import '../../data/services/acceso_service.dart';
+import '../../domain/models/vehiculo_activo_model.dart';
 
 class FormularioSalidaScreen extends StatefulWidget {
   const FormularioSalidaScreen({Key? key}) : super(key: key);
@@ -10,9 +12,9 @@ class FormularioSalidaScreen extends StatefulWidget {
 
 class _FormularioSalidaScreenState extends State<FormularioSalidaScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _accesoService = AccesoService();
   final _placaController = TextEditingController();
 
-  // Simulación de un vehículo encontrado dentro del parqueadero
   Map<String, String>? _vehiculoEncontrado;
   bool _buscando = false;
   bool _procesandoSalida = false;
@@ -23,52 +25,95 @@ class _FormularioSalidaScreenState extends State<FormularioSalidaScreen> {
     super.dispose();
   }
 
-  // Método simulado para buscar la placa activa en el sistema
-  void _buscarVehiculo() {
-    if (_formKey.currentState!.validate()) {
-      setState(() {
-        _buscando = true;
-        _vehiculoEncontrado = null;
-      });
+  Future<void> _buscarVehiculo() async {
+    if (!_formKey.currentState!.validate()) return;
 
-      Future.delayed(const Duration(milliseconds: 800), () {
-        setState(() {
-          _buscando = false;
-          String placaBuscada = _placaController.text.toUpperCase().trim();
-          
-          // Simulamos datos encontrados para cualquier placa ingresada
-          _vehiculoEncontrado = {
-            "placa": placaBuscada,
-            "marca": "Mazda 3 - Gris",
-            "tipo": "Carro",
-            "horaEntrada": "08:30 AM",
-            "espacio": "Parqueadero Principal - Espacio 12",
-          };
-        });
+    setState(() {
+      _buscando = true;
+      _vehiculoEncontrado = null;
+    });
+
+    try {
+      final List<VehiculoActivoModel> vehicles = await _accesoService
+          .obtenerVehiculosActivosSeguro();
+      final String placaBuscada = _placaController.text.trim().toUpperCase();
+
+      VehiculoActivoModel? encontrado;
+      for (final vehiculo in vehicles) {
+        if (vehiculo.placa == placaBuscada) {
+          encontrado = vehiculo;
+          break;
+        }
+      }
+
+      if (!mounted) return;
+
+      if (encontrado == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No se encontró un vehículo activo con esa placa.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+
+      setState(() {
+        _vehiculoEncontrado = {
+          'placa': encontrado!.placa,
+          'marca': encontrado.tipoVehiculo,
+          'tipo': encontrado.tipoVehiculo,
+          'horaEntrada': encontrado.horaIngresoAmPm,
+          'espacio': encontrado.celdaTexto,
+        };
       });
+    } catch (e) {
+      if (!mounted) return;
+      final String detalle = e.toString().replaceFirst('Exception: ', '');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(detalle), backgroundColor: Colors.red),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _buscando = false);
+      }
     }
   }
 
-  // Método para procesar la salida definitiva
-  void _registrarSalida() {
+  Future<void> _registrarSalida() async {
     if (_vehiculoEncontrado == null) return;
 
     setState(() => _procesandoSalida = true);
 
-    Future.delayed(const Duration(seconds: 1), () {
+    try {
+      final resultado = await _accesoService.registrarSalida(
+        _vehiculoEncontrado!['placa']!,
+      );
+
+      if (!mounted) return;
+
+      _placaController.clear();
       setState(() {
-        _procesandoSalida = false;
         _vehiculoEncontrado = null;
       });
-      _placaController.clear();
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("¡Salida registrada con éxito! Vuelva pronto."),
+        SnackBar(
+          content: Text(resultado.mensaje),
           backgroundColor: Colors.green,
         ),
       );
-    });
+    } catch (e) {
+      if (!mounted) return;
+      final String detalle = e.toString().replaceFirst('Exception: ', '');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(detalle), backgroundColor: Colors.red),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _procesandoSalida = false);
+      }
+    }
   }
 
   @override
@@ -91,7 +136,6 @@ class _FormularioSalidaScreenState extends State<FormularioSalidaScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Tarjeta informativa superior
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -103,7 +147,11 @@ class _FormularioSalidaScreenState extends State<FormularioSalidaScreen> {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.logout_rounded, color: AppTheme.primary, size: 32),
+                      const Icon(
+                        Icons.logout_rounded,
+                        color: AppTheme.primary,
+                        size: 32,
+                      ),
                       const SizedBox(width: 16),
                       Expanded(
                         child: Column(
@@ -120,7 +168,10 @@ class _FormularioSalidaScreenState extends State<FormularioSalidaScreen> {
                             SizedBox(height: 2),
                             Text(
                               "Digita la placa del vehículo para verificar su hora de ingreso y liberar el espacio de estacionamiento.",
-                              style: TextStyle(fontSize: 13, color: AppTheme.textMuted),
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: AppTheme.textMuted,
+                              ),
                             ),
                           ],
                         ),
@@ -130,7 +181,6 @@ class _FormularioSalidaScreenState extends State<FormularioSalidaScreen> {
                 ),
                 const SizedBox(height: 24),
 
-                // Formulario de búsqueda por placa
                 Form(
                   key: _formKey,
                   child: Row(
@@ -143,7 +193,9 @@ class _FormularioSalidaScreenState extends State<FormularioSalidaScreen> {
                             labelText: "Placa del Vehículo",
                             hintText: "ej. ABC-123",
                             prefixIcon: const Icon(Icons.badge_outlined),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                             filled: true,
                             fillColor: Colors.white,
                           ),
@@ -162,19 +214,30 @@ class _FormularioSalidaScreenState extends State<FormularioSalidaScreen> {
                           onPressed: _buscando ? null : _buscarVehiculo,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppTheme.primary,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                             elevation: 0,
                           ),
                           icon: _buscando
                               ? const SizedBox(
                                   width: 20,
                                   height: 20,
-                                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
                                 )
-                              : const Icon(Icons.search_rounded, color: Colors.white),
+                              : const Icon(
+                                  Icons.search_rounded,
+                                  color: Colors.white,
+                                ),
                           label: const Text(
                             "Buscar",
-                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ),
@@ -183,11 +246,14 @@ class _FormularioSalidaScreenState extends State<FormularioSalidaScreen> {
                 ),
                 const SizedBox(height: 24),
 
-                // Mostrar tarjeta de detalles si el vehículo fue encontrado
                 if (_vehiculoEncontrado != null) ...[
                   const Text(
                     "Vehículo Encontrado",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textDark),
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.textDark,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   Container(
@@ -202,7 +268,10 @@ class _FormularioSalidaScreenState extends State<FormularioSalidaScreen> {
                           offset: const Offset(0, 4),
                         ),
                       ],
-                      border: Border.all(color: Colors.green.withValues(alpha: 0.4), width: 1.5),
+                      border: Border.all(
+                        color: Colors.green.withValues(alpha: 0.4),
+                        width: 1.5,
+                      ),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -218,7 +287,11 @@ class _FormularioSalidaScreenState extends State<FormularioSalidaScreen> {
                                     color: Colors.green.withValues(alpha: 0.1),
                                     borderRadius: BorderRadius.circular(12),
                                   ),
-                                  child: const Icon(Icons.directions_car_rounded, color: Colors.green, size: 28),
+                                  child: const Icon(
+                                    Icons.directions_car_rounded,
+                                    color: Colors.green,
+                                    size: 28,
+                                  ),
                                 ),
                                 const SizedBox(width: 14),
                                 Column(
@@ -234,21 +307,31 @@ class _FormularioSalidaScreenState extends State<FormularioSalidaScreen> {
                                     ),
                                     Text(
                                       _vehiculoEncontrado!["marca"]!,
-                                      style: const TextStyle(fontSize: 13, color: AppTheme.textMuted),
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        color: AppTheme.textMuted,
+                                      ),
                                     ),
                                   ],
                                 ),
                               ],
                             ),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
                               decoration: BoxDecoration(
                                 color: Colors.green.withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: const Text(
                                 "Activo en parqueadero",
-                                style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 11),
+                                style: TextStyle(
+                                  color: Colors.green,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 11,
+                                ),
                               ),
                             ),
                           ],
@@ -260,41 +343,72 @@ class _FormularioSalidaScreenState extends State<FormularioSalidaScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text("Hora de Ingreso:", style: TextStyle(color: AppTheme.textMuted)),
-                            Text(_vehiculoEncontrado!["horaEntrada"]!, style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.textDark)),
+                            const Text(
+                              "Hora de Ingreso:",
+                              style: TextStyle(color: AppTheme.textMuted),
+                            ),
+                            Text(
+                              _vehiculoEncontrado!["horaEntrada"]!,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.textDark,
+                              ),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 8),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text("Ubicación asignada:", style: TextStyle(color: AppTheme.textMuted)),
-                            Text(_vehiculoEncontrado!["espacio"]!, style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.textDark)),
+                            const Text(
+                              "Ubicación asignada:",
+                              style: TextStyle(color: AppTheme.textMuted),
+                            ),
+                            Text(
+                              _vehiculoEncontrado!["espacio"]!,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.textDark,
+                              ),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 24),
 
-                        // Botón de confirmar salida
                         SizedBox(
                           width: double.infinity,
                           height: 50,
                           child: ElevatedButton.icon(
-                            onPressed: _procesandoSalida ? null : _registrarSalida,
+                            onPressed: _procesandoSalida
+                                ? null
+                                : _registrarSalida,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.orange[800],
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                               elevation: 0,
                             ),
                             icon: _procesandoSalida
                                 ? const SizedBox(
                                     width: 20,
                                     height: 20,
-                                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2,
+                                    ),
                                   )
-                                : const Icon(Icons.exit_to_app_rounded, color: Colors.white),
+                                : const Icon(
+                                    Icons.exit_to_app_rounded,
+                                    color: Colors.white,
+                                  ),
                             label: const Text(
                               "Confirmar Salida del Vehículo",
-                              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                              ),
                             ),
                           ),
                         ),

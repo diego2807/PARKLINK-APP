@@ -1,36 +1,60 @@
 import 'package:flutter/material.dart';
 import '../../../../app_theme.dart';
+import '../../data/services/novedad_service.dart';
 
 class VigilanteIncidentsScreen extends StatefulWidget {
   const VigilanteIncidentsScreen({super.key});
 
   @override
-  State<VigilanteIncidentsScreen> createState() => _VigilanteIncidentsScreenState();
+  State<VigilanteIncidentsScreen> createState() =>
+      _VigilanteIncidentsScreenState();
 }
 
 class _VigilanteIncidentsScreenState extends State<VigilanteIncidentsScreen> {
   final _placaController = TextEditingController();
   final _detalleController = TextEditingController();
+  final NovedadService _novedadService = NovedadService();
   bool _cargando = false;
 
-  void _enviarReporte() async {
+  Future<void> _enviarReporte() async {
     if (_detalleController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Ingresa la descripción de la novedad o falla")),
+        const SnackBar(
+          content: Text('Ingresa la descripción de la novedad o falla'),
+        ),
       );
       return;
     }
 
     setState(() => _cargando = true);
-    await Future.delayed(const Duration(milliseconds: 900));
 
-    if (!mounted) return;
-    setState(() => _cargando = false);
+    try {
+      final placa = _placaController.text.trim();
+      final descripcion = placa.isEmpty
+          ? 'Incidencia: ${_detalleController.text.trim()}'
+          : 'Incidencia - Placa: $placa - ${_detalleController.text.trim()}';
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Incidencia enviada al Administrador")),
-    );
-    Navigator.pop(context);
+      await _novedadService.registrarNovedad(descripcion);
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Incidencia enviada al Administrador'),
+          backgroundColor: AppTheme.success,
+        ),
+      );
+      Navigator.pop(context);
+    } catch (e) {
+      if (!mounted) return;
+      final mensaje = e.toString().replaceFirst('Exception: ', '');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(mensaje), backgroundColor: Colors.red),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _cargando = false);
+      }
+    }
   }
 
   @override
@@ -47,7 +71,10 @@ class _VigilanteIncidentsScreenState extends State<VigilanteIncidentsScreen> {
       appBar: AppBar(
         backgroundColor: AppTheme.primary,
         elevation: 0,
-        title: const Text("Reportar Incidencia", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Reportar Incidencia',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
       ),
       body: Center(
         child: Container(
@@ -64,17 +91,30 @@ class _VigilanteIncidentsScreenState extends State<VigilanteIncidentsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text("Detalle de la Novedad", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.textDark)),
+                  const Text(
+                    'Detalle de la Novedad',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.textDark,
+                    ),
+                  ),
                   const SizedBox(height: 16),
                   TextField(
                     controller: _placaController,
-                    decoration: AppTheme.inputStyle("Placa involucrada (Opcional)", Icons.badge_outlined),
+                    decoration: AppTheme.inputStyle(
+                      'Placa involucrada (Opcional)',
+                      Icons.badge_outlined,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   TextField(
                     controller: _detalleController,
                     maxLines: 4,
-                    decoration: AppTheme.inputStyle("Descripción de la novedad o falla...", Icons.notes),
+                    decoration: AppTheme.inputStyle(
+                      'Descripción de la novedad o falla...',
+                      Icons.notes,
+                    ),
                   ),
                   const SizedBox(height: 20),
                   SizedBox(
@@ -84,11 +124,26 @@ class _VigilanteIncidentsScreenState extends State<VigilanteIncidentsScreen> {
                       onPressed: _cargando ? null : _enviarReporte,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppTheme.accent,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                       child: _cargando
-                          ? const SizedBox(height: 22, width: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
-                          : const Text("Enviar Reporte", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                          ? const SizedBox(
+                              height: 22,
+                              width: 22,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2.5,
+                              ),
+                            )
+                          : const Text(
+                              'Enviar Reporte',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                     ),
                   ),
                 ],

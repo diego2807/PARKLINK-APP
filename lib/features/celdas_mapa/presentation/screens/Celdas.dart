@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../data/services/celda_service.dart';
+
 class AdminSpotsScreen extends StatefulWidget {
   const AdminSpotsScreen({super.key});
 
@@ -8,18 +10,59 @@ class AdminSpotsScreen extends StatefulWidget {
 }
 
 class _AdminSpotsScreenState extends State<AdminSpotsScreen> {
+  final CeldaService _celdaService = CeldaService();
   String _selectedFilter = 'Todas';
+  bool _isLoading = true;
+  String? _errorMessage;
 
-  final List<Map<String, dynamic>> _spots = [
-    {'id': 'A-01', 'zone': 'Zona Norte', 'type': 'Carro', 'status': 'Ocupado', 'plate': 'ABC-123'},
-    {'id': 'A-02', 'zone': 'Zona Norte', 'type': 'Carro', 'status': 'Disponible', 'plate': null},
-    {'id': 'A-03', 'zone': 'Zona Norte', 'type': 'Carro', 'status': 'Reservado', 'plate': 'DEF-456'},
-    {'id': 'A-04', 'zone': 'Zona Norte', 'type': 'Carro', 'status': 'Disponible', 'plate': null},
-    {'id': 'B-01', 'zone': 'Zona Sur', 'type': 'Carro', 'status': 'Ocupado', 'plate': 'GHI-789'},
-    {'id': 'B-02', 'zone': 'Zona Sur', 'type': 'Moto', 'status': 'Mantenimiento', 'plate': null},
-    {'id': 'B-03', 'zone': 'Zona Sur', 'type': 'Moto', 'status': 'Disponible', 'plate': null},
-    {'id': 'B-04', 'zone': 'Zona Sur', 'type': 'Moto', 'status': 'Disponible', 'plate': null},
-  ];
+  List<Map<String, dynamic>> _spots = <Map<String, dynamic>>[];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSpots();
+  }
+
+  Future<void> _loadSpots() async {
+    try {
+      final celdas = await _celdaService.obtenerCeldas();
+      setState(() {
+        _spots = celdas.map((celda) {
+          return <String, dynamic>{
+            'id': celda.codigoCelda,
+            'zone': celda.zona,
+            'type': celda.tipoEtiqueta,
+            'status': celda.ocupada ? 'Ocupado' : 'Disponible',
+            'plate': null,
+            'celdaId': celda.id,
+          };
+        }).toList();
+        _isLoading = false;
+        _errorMessage = null;
+      });
+    } catch (error) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = error.toString();
+      });
+    }
+  }
+
+  String _tipoCeldaBackend(String valor) {
+    switch (valor.toLowerCase()) {
+      case 'administrativas':
+        return 'administrativas';
+      case 'eléctricos':
+      case 'electricos':
+        return 'eléctricos';
+      case 'movilidad':
+      case 'movilidad reducida':
+        return 'movilidad';
+      case 'operativas':
+      default:
+        return 'operativas';
+    }
+  }
 
   List<Map<String, dynamic>> get _filteredSpots {
     if (_selectedFilter == 'Todas') return _spots;
@@ -29,9 +72,8 @@ class _AdminSpotsScreenState extends State<AdminSpotsScreen> {
   void _showAddSpotDialog() {
     final formKey = GlobalKey<FormState>();
     final idController = TextEditingController();
-    String selectedZone = 'Zona Norte';
-    String selectedType = 'Carro';
-    String selectedStatus = 'Disponible';
+    String selectedZone = 'A';
+    String selectedType = 'Operativas';
 
     showDialog(
       context: context,
@@ -39,12 +81,20 @@ class _AdminSpotsScreenState extends State<AdminSpotsScreen> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
               title: const Row(
                 children: [
-                  Icon(Icons.add_location_alt_outlined, color: Color(0xFF3B82F6)),
+                  Icon(
+                    Icons.add_location_alt_outlined,
+                    color: Color(0xFF3B82F6),
+                  ),
                   SizedBox(width: 8),
-                  Text('Agregar Nueva Celda', style: TextStyle(fontWeight: FontWeight.bold)),
+                  Text(
+                    'Agregar Nueva Celda',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
                 ],
               ),
               content: Form(
@@ -75,39 +125,43 @@ class _AdminSpotsScreenState extends State<AdminSpotsScreen> {
                           border: OutlineInputBorder(),
                         ),
                         items: const [
-                          DropdownMenuItem(value: 'Zona Norte', child: Text('Zona Norte')),
-                          DropdownMenuItem(value: 'Zona Sur', child: Text('Zona Sur')),
-                          DropdownMenuItem(value: 'Zona VIP', child: Text('Zona VIP')),
+                          DropdownMenuItem(value: 'A', child: Text('Zona A')),
+                          DropdownMenuItem(value: 'B', child: Text('Zona B')),
+                          DropdownMenuItem(
+                            value: 'VIP',
+                            child: Text('Zona VIP'),
+                          ),
                         ],
-                        onChanged: (val) => setDialogState(() => selectedZone = val!),
+                        onChanged: (val) =>
+                            setDialogState(() => selectedZone = val!),
                       ),
                       const SizedBox(height: 16),
                       DropdownButtonFormField<String>(
                         value: selectedType,
                         decoration: const InputDecoration(
-                          labelText: 'Tipo de Vehículo',
+                          labelText: 'Tipo de Celda',
                           border: OutlineInputBorder(),
                         ),
                         items: const [
-                          DropdownMenuItem(value: 'Carro', child: Text('Carro')),
-                          DropdownMenuItem(value: 'Moto', child: Text('Moto')),
+                          DropdownMenuItem(
+                            value: 'Operativas',
+                            child: Text('Operativas'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'Administrativas',
+                            child: Text('Administrativas'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'Movilidad',
+                            child: Text('Movilidad Reducida'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'Eléctricos',
+                            child: Text('Eléctricos'),
+                          ),
                         ],
-                        onChanged: (val) => setDialogState(() => selectedType = val!),
-                      ),
-                      const SizedBox(height: 16),
-                      DropdownButtonFormField<String>(
-                        value: selectedStatus,
-                        decoration: const InputDecoration(
-                          labelText: 'Estado Inicial',
-                          border: OutlineInputBorder(),
-                        ),
-                        items: const [
-                          DropdownMenuItem(value: 'Disponible', child: Text('Disponible')),
-                          DropdownMenuItem(value: 'Ocupado', child: Text('Ocupado')),
-                          DropdownMenuItem(value: 'Reservado', child: Text('Reservado')),
-                          DropdownMenuItem(value: 'Mantenimiento', child: Text('Mantenimiento')),
-                        ],
-                        onChanged: (val) => setDialogState(() => selectedStatus = val!),
+                        onChanged: (val) =>
+                            setDialogState(() => selectedType = val!),
                       ),
                     ],
                   ),
@@ -116,32 +170,51 @@ class _AdminSpotsScreenState extends State<AdminSpotsScreen> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(ctx).pop(),
-                  child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
+                  child: const Text(
+                    'Cancelar',
+                    style: TextStyle(color: Colors.grey),
+                  ),
                 ),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF3B82F6),
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                   ),
-                  onPressed: () {
+                  onPressed: () async {
                     if (formKey.currentState!.validate()) {
-                      setState(() {
-                        _spots.add({
-                          'id': idController.text.trim().toUpperCase(),
-                          'zone': selectedZone,
-                          'type': selectedType,
-                          'status': selectedStatus,
-                          'plate': selectedStatus == 'Ocupado' || selectedStatus == 'Reservado' ? 'DEF-999' : null,
-                        });
-                      });
-                      Navigator.of(ctx).pop();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Celda "${idController.text.toUpperCase()}" agregada con éxito.'),
-                          backgroundColor: const Color(0xFF10B981),
-                        ),
-                      );
+                      final codigo = idController.text.trim();
+                      final codigoFinal = codigo.contains('-')
+                          ? codigo
+                          : '$selectedZone-$codigo';
+
+                      try {
+                        await _celdaService.registrarCelda(
+                          codigoCelda: codigoFinal,
+                          tipoCelda: _tipoCeldaBackend(selectedType),
+                        );
+                        await _loadSpots();
+                        if (!mounted) return;
+                        Navigator.of(ctx).pop();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'Celda "$codigoFinal" agregada con éxito.',
+                            ),
+                            backgroundColor: const Color(0xFF10B981),
+                          ),
+                        );
+                      } catch (error) {
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('No se pudo crear la celda: $error'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
                     }
                   },
                   child: const Text('Guardar Celda'),
@@ -157,6 +230,7 @@ class _AdminSpotsScreenState extends State<AdminSpotsScreen> {
   void _showEditSpotDialog(Map<String, dynamic> spot) {
     String selectedStatus = spot['status'];
     final plateController = TextEditingController(text: spot['plate'] ?? '');
+    final int? celdaId = spot['celdaId'] as int?;
 
     showDialog(
       context: context,
@@ -164,12 +238,23 @@ class _AdminSpotsScreenState extends State<AdminSpotsScreen> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
               title: Row(
                 children: [
-                  const Icon(Icons.edit_location_alt_outlined, color: Color(0xFF3B82F6)),
+                  const Icon(
+                    Icons.edit_location_alt_outlined,
+                    color: Color(0xFF3B82F6),
+                  ),
                   const SizedBox(width: 8),
-                  Text('Gestionar Celda ${spot['id']}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                  Text(
+                    'Gestionar Celda ${spot['id']}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
                 ],
               ),
               content: SingleChildScrollView(
@@ -183,21 +268,30 @@ class _AdminSpotsScreenState extends State<AdminSpotsScreen> {
                         border: OutlineInputBorder(),
                       ),
                       items: const [
-                        DropdownMenuItem(value: 'Disponible', child: Text('Disponible')),
-                        DropdownMenuItem(value: 'Ocupado', child: Text('Ocupado')),
-                        DropdownMenuItem(value: 'Reservado', child: Text('Reservado')),
-                        DropdownMenuItem(value: 'Mantenimiento', child: Text('Mantenimiento')),
+                        DropdownMenuItem(
+                          value: 'Disponible',
+                          child: Text('Disponible'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'Ocupado',
+                          child: Text('Ocupado'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'Reservado',
+                          child: Text('Reservado'),
+                        ),
                       ],
                       onChanged: (val) {
                         setDialogState(() {
                           selectedStatus = val!;
-                          if (selectedStatus == 'Disponible' || selectedStatus == 'Mantenimiento') {
+                          if (selectedStatus == 'Disponible') {
                             plateController.clear();
                           }
                         });
                       },
                     ),
-                    if (selectedStatus == 'Ocupado' || selectedStatus == 'Reservado') ...[
+                    if (selectedStatus == 'Ocupado' ||
+                        selectedStatus == 'Reservado') ...[
                       const SizedBox(height: 16),
                       TextFormField(
                         controller: plateController,
@@ -214,26 +308,51 @@ class _AdminSpotsScreenState extends State<AdminSpotsScreen> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(ctx).pop(),
-                  child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
+                  child: const Text(
+                    'Cancelar',
+                    style: TextStyle(color: Colors.grey),
+                  ),
                 ),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF3B82F6),
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                   ),
-                  onPressed: () {
-                    setState(() {
-                      spot['status'] = selectedStatus;
-                      spot['plate'] = plateController.text.trim().isEmpty ? null : plateController.text.trim().toUpperCase();
-                    });
-                    Navigator.of(ctx).pop();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Celda ${spot['id']} actualizada correctamente.'),
-                        backgroundColor: const Color(0xFF10B981),
-                      ),
-                    );
+                  onPressed: () async {
+                    if (celdaId == null) return;
+                    try {
+                      final bool ocupada =
+                          selectedStatus == 'Ocupado' ||
+                          selectedStatus == 'Reservado';
+                      await _celdaService.cambiarEstadoCelda(
+                        celdaId: celdaId,
+                        ocupada: ocupada,
+                      );
+                      await _loadSpots();
+                      if (!mounted) return;
+                      Navigator.of(ctx).pop();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'Celda ${spot['id']} actualizada correctamente.',
+                          ),
+                          backgroundColor: const Color(0xFF10B981),
+                        ),
+                      );
+                    } catch (error) {
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'No se pudo actualizar la celda: $error',
+                          ),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
                   },
                   child: const Text('Actualizar'),
                 ),
@@ -247,6 +366,37 @@ class _AdminSpotsScreenState extends State<AdminSpotsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    if (_errorMessage != null) {
+      return Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.error_outline_rounded,
+                  size: 48,
+                  color: Colors.red,
+                ),
+                const SizedBox(height: 12),
+                Text(_errorMessage!, textAlign: TextAlign.center),
+                const SizedBox(height: 12),
+                ElevatedButton(
+                  onPressed: _loadSpots,
+                  child: const Text('Reintentar'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     int disponibles = _spots.where((s) => s['status'] == 'Disponible').length;
     int ocupadas = _spots.where((s) => s['status'] == 'Ocupado').length;
     int reservadas = _spots.where((s) => s['status'] == 'Reservado').length;
@@ -276,7 +426,10 @@ class _AdminSpotsScreenState extends State<AdminSpotsScreen> {
                       SizedBox(height: 4),
                       Text(
                         'Supervisa, asigna y gestiona los espacios del parqueadero.',
-                        style: TextStyle(fontSize: 14, color: Color(0xFF64748B)),
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Color(0xFF64748B),
+                        ),
                       ),
                     ],
                   ),
@@ -287,7 +440,10 @@ class _AdminSpotsScreenState extends State<AdminSpotsScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF3B82F6),
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 14,
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -299,13 +455,33 @@ class _AdminSpotsScreenState extends State<AdminSpotsScreen> {
               const SizedBox(height: 20),
               Row(
                 children: [
-                  _buildQuickStat('Total Celdas', '${_spots.length}', Colors.blue, Icons.grid_view_rounded),
+                  _buildQuickStat(
+                    'Total Celdas',
+                    '${_spots.length}',
+                    Colors.blue,
+                    Icons.grid_view_rounded,
+                  ),
                   const SizedBox(width: 12),
-                  _buildQuickStat('Disponibles', '$disponibles', const Color(0xFF10B981), Icons.check_circle_outline),
+                  _buildQuickStat(
+                    'Disponibles',
+                    '$disponibles',
+                    const Color(0xFF10B981),
+                    Icons.check_circle_outline,
+                  ),
                   const SizedBox(width: 12),
-                  _buildQuickStat('Ocupadas', '$ocupadas', const Color(0xFFEF4444), Icons.directions_car_filled),
+                  _buildQuickStat(
+                    'Ocupadas',
+                    '$ocupadas',
+                    const Color(0xFFEF4444),
+                    Icons.directions_car_filled,
+                  ),
                   const SizedBox(width: 12),
-                  _buildQuickStat('Reservadas', '$reservadas', const Color(0xFFF59E0B), Icons.bookmark_border),
+                  _buildQuickStat(
+                    'Reservadas',
+                    '$reservadas',
+                    const Color(0xFFF59E0B),
+                    Icons.bookmark_border,
+                  ),
                 ],
               ),
               const SizedBox(height: 24),
@@ -317,7 +493,6 @@ class _AdminSpotsScreenState extends State<AdminSpotsScreen> {
                     _buildFilterChip('Disponible'),
                     _buildFilterChip('Ocupado'),
                     _buildFilterChip('Reservado'),
-                    _buildFilterChip('Mantenimiento'),
                   ],
                 ),
               ),
@@ -327,8 +502,8 @@ class _AdminSpotsScreenState extends State<AdminSpotsScreen> {
                   int crossAxisCount = constraints.maxWidth > 1100
                       ? 4
                       : constraints.maxWidth > 700
-                          ? 3
-                          : 2;
+                      ? 3
+                      : 2;
 
                   return GridView.builder(
                     shrinkWrap: true,
@@ -354,7 +529,12 @@ class _AdminSpotsScreenState extends State<AdminSpotsScreen> {
     );
   }
 
-  Widget _buildQuickStat(String title, String count, Color color, IconData icon) {
+  Widget _buildQuickStat(
+    String title,
+    String count,
+    Color color,
+    IconData icon,
+  ) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -387,7 +567,10 @@ class _AdminSpotsScreenState extends State<AdminSpotsScreen> {
                 ),
                 Text(
                   title,
-                  style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: Color(0xFF64748B),
+                  ),
                 ),
               ],
             ),
@@ -420,7 +603,9 @@ class _AdminSpotsScreenState extends State<AdminSpotsScreen> {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
           side: BorderSide(
-            color: isSelected ? const Color(0xFF3B82F6) : const Color(0xFFE2E8F0),
+            color: isSelected
+                ? const Color(0xFF3B82F6)
+                : const Color(0xFFE2E8F0),
           ),
         ),
       ),
@@ -486,8 +671,12 @@ class _AdminSpotsScreenState extends State<AdminSpotsScreen> {
                       ),
                     ),
                     Icon(
-                      spot['type'] == 'Carro' ? Icons.directions_car : Icons.two_wheeler,
-                      color: const Color(0xFF64748B),
+                      spot['status'] == 'Disponible'
+                          ? Icons.check_circle_rounded
+                          : spot['status'] == 'Ocupado'
+                          ? Icons.directions_car_filled
+                          : Icons.bookmark_rounded,
+                      color: statusColor,
                       size: 22,
                     ),
                   ],
@@ -497,7 +686,10 @@ class _AdminSpotsScreenState extends State<AdminSpotsScreen> {
                   children: [
                     Text(
                       spot['zone'],
-                      style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF64748B),
+                      ),
                     ),
                     if (spot['plate'] != null) ...[
                       const SizedBox(height: 2),
@@ -513,7 +705,10 @@ class _AdminSpotsScreenState extends State<AdminSpotsScreen> {
                   ],
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: bgColor,
                     borderRadius: BorderRadius.circular(20),
