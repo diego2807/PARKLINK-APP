@@ -137,7 +137,13 @@ class _AdminLogScreenState extends State<AdminLogScreen> {
           children: const [
             Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
             SizedBox(width: 10),
-            Text('Reporte de logs generado correctamente en formato CSV.'),
+            Expanded(
+              child: Text(
+                'Reporte de logs generado correctamente en formato CSV.',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ],
         ),
         backgroundColor: const Color(0xFF0F172A),
@@ -174,17 +180,21 @@ class _AdminLogScreenState extends State<AdminLogScreen> {
               ),
             ),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Detalle del Registro (${log.id})',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF0F172A),
+                Expanded(
+                  child: Text(
+                    'Detalle del Registro (${log.id})',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF0F172A),
+                    ),
                   ),
                 ),
-                _buildStatusBadge(log.status),
+                const SizedBox(width: 12),
+                Flexible(child: _buildStatusBadge(log.status)),
               ],
             ),
             const SizedBox(height: 20),
@@ -258,13 +268,19 @@ class _AdminLogScreenState extends State<AdminLogScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+            ),
           ),
           Flexible(
             child: Text(
               value,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.end,
               style: const TextStyle(
                 fontSize: 13,
@@ -334,8 +350,11 @@ class _AdminLogScreenState extends State<AdminLogScreen> {
                           ],
                         )
                       : Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [_buildHeaderTitle(), _buildExportButton()],
+                          children: [
+                            Expanded(child: _buildHeaderTitle()),
+                            const SizedBox(width: 16),
+                            _buildExportButton(),
+                          ],
                         );
                 },
               ),
@@ -594,7 +613,7 @@ class _AdminLogScreenState extends State<AdminLogScreen> {
                     border: Border.all(color: const Color(0xFFE2E8F0)),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.02),
+                        color: Colors.black.withValues(alpha: 0.02),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),
@@ -646,108 +665,127 @@ class _AdminLogScreenState extends State<AdminLogScreen> {
                               final log = _filteredLogs[index];
                               return InkWell(
                                 onTap: () => _showLogDetailModal(log),
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 20,
-                                    vertical: 14,
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      // Icono
-                                      Container(
-                                        padding: const EdgeInsets.all(10),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFFF1F5F9),
-                                          borderRadius: BorderRadius.circular(
-                                            10,
+                                child: SingleChildScrollView(
+                                  scrollDirection: Axis.horizontal,
+                                  child: SizedBox(
+                                    width: 620,
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 20,
+                                        vertical: 14,
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          // Icono
+                                          Container(
+                                            padding: const EdgeInsets.all(10),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFF1F5F9),
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                            ),
+                                            child: Icon(
+                                              log.icon,
+                                              size: 20,
+                                              color: const Color(0xFF475569),
+                                            ),
                                           ),
-                                        ),
-                                        child: Icon(
-                                          log.icon,
-                                          size: 20,
-                                          color: const Color(0xFF475569),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 16),
+                                          const SizedBox(width: 16),
 
-                                      // Fecha y Hora
-                                      SizedBox(
-                                        width: 100,
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              _formatDate(log.timestamp),
-                                              style: const TextStyle(
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.bold,
-                                                color: Color(0xFF0F172A),
-                                              ),
-                                            ),
-                                            Text(
-                                              _formatTime(log.timestamp),
-                                              style: const TextStyle(
-                                                fontSize: 11,
-                                                color: Color(0xFF64748B),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-
-                                      // Usuario Responsable
-                                      SizedBox(
-                                        width: 130,
-                                        child: Row(
-                                          children: [
-                                            CircleAvatar(
-                                              radius: 12,
-                                              backgroundColor: const Color(
-                                                0xFFDBEAFE,
-                                              ),
-                                              child: Text(
-                                                log.user[0].toUpperCase(),
-                                                style: const TextStyle(
-                                                  fontSize: 10,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: Color(0xFF1D4ED8),
+                                          // Fecha y Hora
+                                          SizedBox(
+                                            width: 100,
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  _formatDate(log.timestamp),
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  style: const TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Color(0xFF0F172A),
+                                                  ),
                                                 ),
-                                              ),
-                                            ),
-                                            const SizedBox(width: 8),
-                                            Expanded(
-                                              child: Text(
-                                                log.user,
-                                                overflow: TextOverflow.ellipsis,
-                                                style: const TextStyle(
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: Color(0xFF334155),
+                                                Text(
+                                                  _formatTime(log.timestamp),
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  style: const TextStyle(
+                                                    fontSize: 11,
+                                                    color: Color(0xFF64748B),
+                                                  ),
                                                 ),
-                                              ),
+                                              ],
                                             ),
-                                          ],
-                                        ),
-                                      ),
-
-                                      // Descripción de la Acción
-                                      Expanded(
-                                        child: Text(
-                                          log.action,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(
-                                            fontSize: 13,
-                                            color: Color(0xFF1E293B),
                                           ),
-                                        ),
+
+                                          // Usuario Responsable
+                                          SizedBox(
+                                            width: 130,
+                                            child: Row(
+                                              children: [
+                                                CircleAvatar(
+                                                  radius: 12,
+                                                  backgroundColor: const Color(
+                                                    0xFFDBEAFE,
+                                                  ),
+                                                  child: Text(
+                                                    log.user.isEmpty
+                                                        ? '?'
+                                                        : log.user[0]
+                                                              .toUpperCase(),
+                                                    style: const TextStyle(
+                                                      fontSize: 10,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      color: Color(0xFF1D4ED8),
+                                                    ),
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 8),
+                                                Expanded(
+                                                  child: Text(
+                                                    log.user,
+                                                    maxLines: 1,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                    style: const TextStyle(
+                                                      fontSize: 12,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                      color: Color(0xFF334155),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+
+                                          // Descripción de la Acción
+                                          Expanded(
+                                            child: Text(
+                                              log.action,
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(
+                                                fontSize: 13,
+                                                color: Color(0xFF1E293B),
+                                              ),
+                                            ),
+                                          ),
+
+                                          const SizedBox(width: 12),
+
+                                          // Badge de Estado
+                                          _buildStatusBadge(log.status),
+                                        ],
                                       ),
-
-                                      const SizedBox(width: 12),
-
-                                      // Badge de Estado
-                                      _buildStatusBadge(log.status),
-                                    ],
+                                    ),
                                   ),
                                 ),
                               );
@@ -770,6 +808,8 @@ class _AdminLogScreenState extends State<AdminLogScreen> {
       children: const [
         Text(
           'Historial de Actividad',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: TextStyle(
             fontSize: 22,
             fontWeight: FontWeight.bold,
@@ -779,6 +819,8 @@ class _AdminLogScreenState extends State<AdminLogScreen> {
         SizedBox(height: 4),
         Text(
           'Consulta eventos de seguridad, cambios de configuración y registros del sistema.',
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
           style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
         ),
       ],
@@ -810,42 +852,59 @@ class _AdminLogScreenState extends State<AdminLogScreen> {
     IconData icon,
     Color color,
   ) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+    return Card(
+      margin: EdgeInsets.zero,
+      elevation: 0,
+      shadowColor: Colors.black12,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: const BorderSide(color: Color(0xFFE2E8F0)),
       ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, color: color, size: 20),
             ),
-            child: Icon(icon, color: color, size: 20),
-          ),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: Color(0xFF64748B),
+                    ),
+                  ),
+                  Text(
+                    value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF0F172A),
+                    ),
+                  ),
+                ],
               ),
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF0F172A),
-                ),
-              ),
-            ],
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -880,6 +939,8 @@ class _AdminLogScreenState extends State<AdminLogScreen> {
       ),
       child: Text(
         status,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
         style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: fg),
       ),
     );

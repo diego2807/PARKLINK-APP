@@ -531,12 +531,16 @@ class _ListaVehiculosActivoScreenState
                                     children: [
                                       Row(
                                         children: [
-                                          Text(
-                                            v['placa']!,
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 18,
-                                              color: AppTheme.textDark,
+                                          Expanded(
+                                            child: Text(
+                                              v['placa']!,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 18,
+                                                color: AppTheme.textDark,
+                                              ),
                                             ),
                                           ),
                                           const SizedBox(width: 8),
@@ -568,6 +572,8 @@ class _ListaVehiculosActivoScreenState
                                       const SizedBox(height: 4),
                                       Text(
                                         '${v['tipo']} • ${v['marca']}',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                         style: const TextStyle(
                                           fontSize: 13,
                                           color: AppTheme.textMuted,

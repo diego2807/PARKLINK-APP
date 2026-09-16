@@ -141,12 +141,16 @@ class _AdminAlertsScreenState extends State<AdminAlertsScreen> {
                       children: [
                         Row(
                           children: [
-                            const Text(
-                              'Notificaciones e Incidentes Activos',
-                              style: TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF0F172A),
+                            const Expanded(
+                              child: Text(
+                                'Notificaciones e Incidentes Activos',
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF0F172A),
+                                ),
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -185,6 +189,8 @@ class _AdminAlertsScreenState extends State<AdminAlertsScreen> {
                         const SizedBox(height: 4),
                         const Text(
                           'Supervisa los eventos críticos que requieren atención inmediata en el parqueadero.',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontSize: 14,
                             color: Color(0xFF64748B),
@@ -196,36 +202,39 @@ class _AdminAlertsScreenState extends State<AdminAlertsScreen> {
                 ],
               ),
               const SizedBox(height: 20),
-              Row(
-                children: [
-                  _buildMetricStat(
-                    'Alta',
-                    '$altas',
-                    const Color(0xFFEF4444),
-                    Icons.error_outline,
-                  ),
-                  const SizedBox(width: 8),
-                  _buildMetricStat(
-                    'Media',
-                    '$medias',
-                    const Color(0xFFF59E0B),
-                    Icons.warning_amber_rounded,
-                  ),
-                  const SizedBox(width: 8),
-                  _buildMetricStat(
-                    'Baja',
-                    '$bajas',
-                    const Color(0xFF3B82F6),
-                    Icons.info_outline,
-                  ),
-                  const SizedBox(width: 8),
-                  _buildMetricStat(
-                    'Resueltas',
-                    '$resueltas',
-                    const Color(0xFF10B981),
-                    Icons.check_circle_outline,
-                  ),
-                ],
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    _buildMetricStat(
+                      'Alta',
+                      '$altas',
+                      const Color(0xFFEF4444),
+                      Icons.error_outline,
+                    ),
+                    const SizedBox(width: 8),
+                    _buildMetricStat(
+                      'Media',
+                      '$medias',
+                      const Color(0xFFF59E0B),
+                      Icons.warning_amber_rounded,
+                    ),
+                    const SizedBox(width: 8),
+                    _buildMetricStat(
+                      'Baja',
+                      '$bajas',
+                      const Color(0xFF3B82F6),
+                      Icons.info_outline,
+                    ),
+                    const SizedBox(width: 8),
+                    _buildMetricStat(
+                      'Resueltas',
+                      '$resueltas',
+                      const Color(0xFF10B981),
+                      Icons.check_circle_outline,
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 24),
               SingleChildScrollView(
@@ -328,50 +337,57 @@ class _AdminAlertsScreenState extends State<AdminAlertsScreen> {
     Color color,
     IconData icon,
   ) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
+    return SizedBox(
+      width: 170,
+      child: Card(
+        margin: EdgeInsets.zero,
+        elevation: 0,
+        shadowColor: Colors.black12,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: Color(0xFFE2E8F0)),
         ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: color, size: 18),
               ),
-              child: Icon(icon, color: color, size: 18),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    count,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: color,
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      count,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: color,
+                      ),
                     ),
-                  ),
-                  Text(
-                    label,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: Color(0xFF64748B),
+                    Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFF64748B),
+                      ),
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -495,6 +511,8 @@ class _AdminAlertsScreenState extends State<AdminAlertsScreen> {
                       ),
                       child: Text(
                         isResolved ? 'Resuelta' : alerta.severidadTexto,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
@@ -509,6 +527,8 @@ class _AdminAlertsScreenState extends State<AdminAlertsScreen> {
                 const SizedBox(height: 6),
                 Text(
                   alerta.contenido,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 14,
                     color: isResolved
@@ -520,22 +540,26 @@ class _AdminAlertsScreenState extends State<AdminAlertsScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.access_time,
-                          size: 14,
-                          color: Color(0xFF94A3B8),
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          alerta.tiempoRelativo,
-                          style: const TextStyle(
-                            fontSize: 12,
+                    Expanded(
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.access_time,
+                            size: 14,
                             color: Color(0xFF94A3B8),
                           ),
-                        ),
-                      ],
+                          const SizedBox(width: 4),
+                          Text(
+                            alerta.tiempoRelativo,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFF94A3B8),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                     if (!isResolved)
                       OutlinedButton.icon(

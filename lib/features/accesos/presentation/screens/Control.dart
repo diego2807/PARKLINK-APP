@@ -42,7 +42,11 @@ class ControlScreen extends StatelessWidget {
                           color: AppTheme.primary,
                           borderRadius: BorderRadius.circular(14),
                         ),
-                        child: const Icon(Icons.admin_panel_settings_rounded, color: Colors.white, size: 32),
+                        child: const Icon(
+                          Icons.admin_panel_settings_rounded,
+                          color: Colors.white,
+                          size: 32,
+                        ),
                       ),
                       const SizedBox(width: 16),
                       Expanded(
@@ -51,6 +55,8 @@ class ControlScreen extends StatelessWidget {
                           children: const [
                             Text(
                               "Bienvenido al Sistema de Gestión",
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 18,
@@ -60,7 +66,12 @@ class ControlScreen extends StatelessWidget {
                             SizedBox(height: 4),
                             Text(
                               "Selecciona una de las opciones rápidas para gestionar accesos, vehículos o consultar registros.",
-                              style: TextStyle(fontSize: 13, color: AppTheme.textMuted),
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: AppTheme.textMuted,
+                              ),
                             ),
                           ],
                         ),
@@ -82,7 +93,9 @@ class ControlScreen extends StatelessWidget {
 
                 // Cuadrícula de opciones de control
                 GridView.count(
-                  crossAxisCount: MediaQuery.of(context).size.width > 600 ? 2 : 1,
+                  crossAxisCount: MediaQuery.of(context).size.width > 600
+                      ? 2
+                      : 1,
                   crossAxisSpacing: 16,
                   mainAxisSpacing: 16,
                   shrinkWrap: true,
@@ -98,7 +111,11 @@ class ControlScreen extends StatelessWidget {
                       onTap: () {
                         // Navegar o mostrar mensaje
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("Abriendo formulario de visitantes...")),
+                          const SnackBar(
+                            content: Text(
+                              "Abriendo formulario de visitantes...",
+                            ),
+                          ),
                         );
                       },
                     ),
@@ -110,7 +127,9 @@ class ControlScreen extends StatelessWidget {
                       color: Colors.orange[800]!,
                       onTap: () {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("Abriendo control de salida...")),
+                          const SnackBar(
+                            content: Text("Abriendo control de salida..."),
+                          ),
                         );
                       },
                     ),
@@ -122,7 +141,9 @@ class ControlScreen extends StatelessWidget {
                       color: AppTheme.primary,
                       onTap: () {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("Abriendo lista de vehículos...")),
+                          const SnackBar(
+                            content: Text("Abriendo lista de vehículos..."),
+                          ),
                         );
                       },
                     ),
@@ -134,7 +155,9 @@ class ControlScreen extends StatelessWidget {
                       color: Colors.blueGrey,
                       onTap: () {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("Abriendo historial...")),
+                          const SnackBar(
+                            content: Text("Abriendo historial..."),
+                          ),
                         );
                       },
                     ),
@@ -192,6 +215,8 @@ class ControlScreen extends StatelessWidget {
                 children: [
                   Text(
                     title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
@@ -201,6 +226,8 @@ class ControlScreen extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     subtitle,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontSize: 12,
                       color: AppTheme.textMuted,
@@ -209,7 +236,11 @@ class ControlScreen extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: AppTheme.textMuted),
+            const Icon(
+              Icons.arrow_forward_ios_rounded,
+              size: 16,
+              color: AppTheme.textMuted,
+            ),
           ],
         ),
       ),

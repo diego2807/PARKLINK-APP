@@ -62,9 +62,13 @@ class _LoginScreenState extends State<LoginScreen> {
           children: [
             Icon(Icons.lock_reset_rounded, color: AppTheme.primary),
             SizedBox(width: 8),
-            Text(
-              "Recuperar Contraseña",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            Expanded(
+              child: Text(
+                "Recuperar Contraseña",
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
             ),
           ],
         ),
@@ -73,6 +77,8 @@ class _LoginScreenState extends State<LoginScreen> {
           children: [
             const Text(
               "Ingresa tu correo corporativo y te enviaremos las instrucciones para restablecer tu contraseña.",
+              maxLines: 5,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(fontSize: 13, color: AppTheme.textMuted),
             ),
             const SizedBox(height: 16),
@@ -169,7 +175,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 borderRadius: BorderRadius.circular(24),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.15),
+                    color: Colors.black.withValues(alpha: 0.15),
                     blurRadius: 25,
                     offset: const Offset(0, 10),
                   ),
@@ -184,7 +190,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: AppTheme.primary.withOpacity(0.1),
+                        color: AppTheme.primary.withValues(alpha: 0.1),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
@@ -208,6 +214,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 6),
                     const Text(
                       "Gestión de Parqueaderos Redeban",
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(fontSize: 14, color: AppTheme.textMuted),
                     ),
                     const SizedBox(height: 32),
@@ -302,7 +310,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppTheme.primary,
                           elevation: 3,
-                          shadowColor: AppTheme.primary.withOpacity(0.4),
+                          shadowColor: AppTheme.primary.withValues(alpha: 0.4),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14),
                           ),

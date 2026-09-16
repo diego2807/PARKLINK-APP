@@ -409,14 +409,15 @@ class _AdminSpotsScreenState extends State<AdminSpotsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Column(
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final header = const Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         'Estado de Celdas en Tiempo Real',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
@@ -426,14 +427,16 @@ class _AdminSpotsScreenState extends State<AdminSpotsScreen> {
                       SizedBox(height: 4),
                       Text(
                         'Supervisa, asigna y gestiona los espacios del parqueadero.',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontSize: 14,
                           color: Color(0xFF64748B),
                         ),
                       ),
                     ],
-                  ),
-                  ElevatedButton.icon(
+                  );
+                  final button = ElevatedButton.icon(
                     onPressed: _showAddSpotDialog,
                     icon: const Icon(Icons.add, size: 20),
                     label: const Text('Nueva Celda'),
@@ -449,40 +452,59 @@ class _AdminSpotsScreenState extends State<AdminSpotsScreen> {
                       ),
                       elevation: 0,
                     ),
-                  ),
-                ],
+                  );
+                  return constraints.maxWidth < 560
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            header,
+                            const SizedBox(height: 14),
+                            SizedBox(width: double.infinity, child: button),
+                          ],
+                        )
+                      : Row(
+                          children: [
+                            Expanded(child: header),
+                            const SizedBox(width: 16),
+                            button,
+                          ],
+                        );
+                },
               ),
               const SizedBox(height: 20),
-              Row(
-                children: [
-                  _buildQuickStat(
-                    'Total Celdas',
-                    '${_spots.length}',
-                    Colors.blue,
-                    Icons.grid_view_rounded,
-                  ),
-                  const SizedBox(width: 12),
-                  _buildQuickStat(
-                    'Disponibles',
-                    '$disponibles',
-                    const Color(0xFF10B981),
-                    Icons.check_circle_outline,
-                  ),
-                  const SizedBox(width: 12),
-                  _buildQuickStat(
-                    'Ocupadas',
-                    '$ocupadas',
-                    const Color(0xFFEF4444),
-                    Icons.directions_car_filled,
-                  ),
-                  const SizedBox(width: 12),
-                  _buildQuickStat(
-                    'Reservadas',
-                    '$reservadas',
-                    const Color(0xFFF59E0B),
-                    Icons.bookmark_border,
-                  ),
-                ],
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    _buildQuickStat(
+                      'Total Celdas',
+                      '${_spots.length}',
+                      Colors.blue,
+                      Icons.grid_view_rounded,
+                    ),
+                    const SizedBox(width: 12),
+                    _buildQuickStat(
+                      'Disponibles',
+                      '$disponibles',
+                      const Color(0xFF10B981),
+                      Icons.check_circle_outline,
+                    ),
+                    const SizedBox(width: 12),
+                    _buildQuickStat(
+                      'Ocupadas',
+                      '$ocupadas',
+                      const Color(0xFFEF4444),
+                      Icons.directions_car_filled,
+                    ),
+                    const SizedBox(width: 12),
+                    _buildQuickStat(
+                      'Reservadas',
+                      '$reservadas',
+                      const Color(0xFFF59E0B),
+                      Icons.bookmark_border,
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 24),
               SingleChildScrollView(
@@ -535,46 +557,59 @@ class _AdminSpotsScreenState extends State<AdminSpotsScreen> {
     Color color,
     IconData icon,
   ) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
+    return SizedBox(
+      width: 190,
+      child: Card(
+        margin: EdgeInsets.zero,
+        elevation: 0,
+        shadowColor: Colors.black12,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: Color(0xFFE2E8F0)),
         ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, color: color, size: 18),
               ),
-              child: Icon(icon, color: color, size: 18),
-            ),
-            const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  count,
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: color,
-                  ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      count,
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: color,
+                      ),
+                    ),
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFF64748B),
+                      ),
+                    ),
+                  ],
                 ),
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: Color(0xFF64748B),
-                  ),
-                ),
-              ],
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -664,6 +699,8 @@ class _AdminSpotsScreenState extends State<AdminSpotsScreen> {
                   children: [
                     Text(
                       spot['id'],
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -685,7 +722,9 @@ class _AdminSpotsScreenState extends State<AdminSpotsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      spot['zone'],
+                      '${spot['zone']} • ${spot['type']}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontSize: 12,
                         color: Color(0xFF64748B),
@@ -695,6 +734,8 @@ class _AdminSpotsScreenState extends State<AdminSpotsScreen> {
                       const SizedBox(height: 2),
                       Text(
                         'Placa: ${spot['plate']}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
@@ -720,6 +761,8 @@ class _AdminSpotsScreenState extends State<AdminSpotsScreen> {
                       const SizedBox(width: 6),
                       Text(
                         spot['status'],
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,

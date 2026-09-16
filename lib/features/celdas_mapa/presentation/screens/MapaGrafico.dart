@@ -195,20 +195,22 @@ class _MapaGraficoScreenState extends State<MapaGraficoScreen> {
                       const SizedBox(height: 12),
                       const Divider(height: 1),
                       const SizedBox(height: 12),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
-                        children: [
-                          _leyenda(
-                            'Disponible',
-                            const Color(0xFFE8F5E9),
-                            AppTheme.success,
-                          ),
-                          _leyenda(
-                            'Ocupado',
-                            Colors.grey[200]!,
-                            Colors.grey[500]!,
-                          ),
-                        ],
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            _leyenda(
+                              'Disponible',
+                              const Color(0xFFE8F5E9),
+                              AppTheme.success,
+                            ),
+                            _leyenda(
+                              'Ocupado',
+                              Colors.grey[200]!,
+                              Colors.grey[500]!,
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -217,22 +219,31 @@ class _MapaGraficoScreenState extends State<MapaGraficoScreen> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'Celdas de la zona',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                        color: AppTheme.textDark,
+                    const Expanded(
+                      child: Text(
+                        'Celdas de la zona',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                          color: AppTheme.textDark,
+                        ),
                       ),
                     ),
-                    Text(
-                      '$disponibles disponibles',
-                      style: const TextStyle(
-                        color: AppTheme.success,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12.5,
+                    const SizedBox(width: 12),
+                    Flexible(
+                      child: Text(
+                        '$disponibles disponibles',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.end,
+                        style: const TextStyle(
+                          color: AppTheme.success,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12.5,
+                        ),
                       ),
                     ),
                   ],
@@ -242,8 +253,10 @@ class _MapaGraficoScreenState extends State<MapaGraficoScreen> {
               Expanded(
                 child: GridView.builder(
                   padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 3,
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: MediaQuery.of(context).size.width < 420
+                        ? 2
+                        : 3,
                     crossAxisSpacing: 14,
                     mainAxisSpacing: 14,
                     childAspectRatio: 1.2,
@@ -290,6 +303,8 @@ class _MapaGraficoScreenState extends State<MapaGraficoScreen> {
                               const SizedBox(height: 6),
                               Text(
                                 celda.codigoCelda,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 14,
@@ -328,6 +343,8 @@ class _MapaGraficoScreenState extends State<MapaGraficoScreen> {
         const SizedBox(width: 6),
         Text(
           label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: const TextStyle(
             fontSize: 11.5,
             color: AppTheme.textMuted,

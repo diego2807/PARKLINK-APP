@@ -184,88 +184,103 @@ class _UserNotificationsScreenState extends State<UserNotificationsScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Row(
-                            children: [
-                              const Text(
-                                'Bandeja de Entrada',
-                                style: TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppTheme.textDark,
-                                ),
-                              ),
-                              if (_noLeidasCount > 0) ...<Widget>[
-                                const SizedBox(width: 10),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: AppTheme.accent,
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
+                          Expanded(
+                            child: Row(
+                              children: [
+                                const Expanded(
                                   child: Text(
-                                    '$_noLeidasCount nuevas',
-                                    style: const TextStyle(
-                                      color: Colors.white,
+                                    'Bandeja de Entrada',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 20,
                                       fontWeight: FontWeight.bold,
-                                      fontSize: 11,
+                                      color: AppTheme.textDark,
                                     ),
                                   ),
                                 ),
+                                if (_noLeidasCount > 0) ...<Widget>[
+                                  const SizedBox(width: 10),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.accent,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      '$_noLeidasCount nuevas',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ],
-                            ],
+                            ),
                           ),
                           if (_noLeidasCount > 0)
-                            TextButton.icon(
-                              onPressed: _marcarTodasLeidas,
-                              icon: const Icon(
-                                Icons.done_all_rounded,
-                                size: 18,
-                                color: AppTheme.primary,
-                              ),
-                              label: const Text(
-                                'Marcar leídas',
-                                style: TextStyle(
+                            Flexible(
+                              child: TextButton.icon(
+                                onPressed: _marcarTodasLeidas,
+                                icon: const Icon(
+                                  Icons.done_all_rounded,
+                                  size: 18,
                                   color: AppTheme.primary,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
+                                ),
+                                label: const Text(
+                                  'Marcar leídas',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: AppTheme.primary,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                  ),
                                 ),
                               ),
                             ),
                         ],
                       ),
                       const SizedBox(height: 16),
-                      Row(
-                        children: <String>['Todas', 'Sin leer', 'Importantes']
-                            .map((String categoria) {
-                              final bool selected = _filtroSel == categoria;
-                              return Padding(
-                                padding: const EdgeInsets.only(right: 8),
-                                child: ChoiceChip(
-                                  label: Text(categoria),
-                                  selected: selected,
-                                  selectedColor: AppTheme.primary,
-                                  labelStyle: TextStyle(
-                                    color: selected
-                                        ? Colors.white
-                                        : AppTheme.textDark,
-                                    fontWeight: selected
-                                        ? FontWeight.bold
-                                        : FontWeight.normal,
-                                    fontSize: 12,
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: <String>['Todas', 'Sin leer', 'Importantes']
+                              .map((String categoria) {
+                                final bool selected = _filtroSel == categoria;
+                                return Padding(
+                                  padding: const EdgeInsets.only(right: 8),
+                                  child: ChoiceChip(
+                                    label: Text(categoria),
+                                    selected: selected,
+                                    selectedColor: AppTheme.primary,
+                                    labelStyle: TextStyle(
+                                      color: selected
+                                          ? Colors.white
+                                          : AppTheme.textDark,
+                                      fontWeight: selected
+                                          ? FontWeight.bold
+                                          : FontWeight.normal,
+                                      fontSize: 12,
+                                    ),
+                                    backgroundColor: AppTheme.cardBg,
+                                    onSelected: (bool isSelected) {
+                                      if (isSelected) {
+                                        setState(() => _filtroSel = categoria);
+                                      }
+                                    },
                                   ),
-                                  backgroundColor: AppTheme.cardBg,
-                                  onSelected: (bool isSelected) {
-                                    if (isSelected) {
-                                      setState(() => _filtroSel = categoria);
-                                    }
-                                  },
-                                ),
-                              );
-                            })
-                            .toList(),
+                                );
+                              })
+                              .toList(),
+                        ),
                       ),
                       const SizedBox(height: 20),
                       if (_notificacionesFiltradas.isEmpty)
@@ -282,6 +297,8 @@ class _UserNotificationsScreenState extends State<UserNotificationsScreen> {
                                 const SizedBox(height: 12),
                                 const Text(
                                   'No tienes notificaciones en esta categoría',
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
                                     color: AppTheme.textMuted,
                                     fontSize: 14,
@@ -359,6 +376,9 @@ class _UserNotificationsScreenState extends State<UserNotificationsScreen> {
                                                   Expanded(
                                                     child: Text(
                                                       item.titulo,
+                                                      maxLines: 2,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
                                                       style: TextStyle(
                                                         fontSize: 15,
                                                         fontWeight: leida
@@ -370,11 +390,18 @@ class _UserNotificationsScreenState extends State<UserNotificationsScreen> {
                                                       ),
                                                     ),
                                                   ),
-                                                  Text(
-                                                    item.tiempoRelativo,
-                                                    style: const TextStyle(
-                                                      fontSize: 11,
-                                                      color: AppTheme.textMuted,
+                                                  Flexible(
+                                                    child: Text(
+                                                      item.tiempoRelativo,
+                                                      maxLines: 1,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                      textAlign: TextAlign.end,
+                                                      style: const TextStyle(
+                                                        fontSize: 11,
+                                                        color:
+                                                            AppTheme.textMuted,
+                                                      ),
                                                     ),
                                                   ),
                                                 ],
@@ -382,6 +409,8 @@ class _UserNotificationsScreenState extends State<UserNotificationsScreen> {
                                               const SizedBox(height: 6),
                                               Text(
                                                 item.descripcion,
+                                                maxLines: 3,
+                                                overflow: TextOverflow.ellipsis,
                                                 style: TextStyle(
                                                   fontSize: 13,
                                                   color: leida

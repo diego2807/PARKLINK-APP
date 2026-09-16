@@ -144,7 +144,8 @@ class _FormularioEntradaScreenState extends State<FormularioEntradaScreen> {
 
   Widget _tipoChip(String tipo, IconData icon) {
     final bool seleccionado = _tipoVehiculo == tipo;
-    return Expanded(
+    return SizedBox(
+      width: 112,
       child: GestureDetector(
         onTap: () => setState(() => _tipoVehiculo = tipo),
         child: AnimatedContainer(
@@ -221,7 +222,9 @@ class _FormularioEntradaScreenState extends State<FormularioEntradaScreen> {
                       ),
                     ),
                     const SizedBox(height: 10),
-                    Row(
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
                       children: [
                         _tipoChip("Carro", Icons.directions_car_rounded),
                         _tipoChip("Moto", Icons.two_wheeler_rounded),

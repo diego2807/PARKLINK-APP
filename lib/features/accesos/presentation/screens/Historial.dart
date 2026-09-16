@@ -91,14 +91,17 @@ class _HistorialScreenState extends State<HistorialScreen> {
                       style: TextStyle(fontSize: 13, color: AppTheme.textMuted),
                     ),
                     const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        _buildFiltroBoton('Todos'),
-                        const SizedBox(width: 8),
-                        _buildFiltroBoton('Entrada'),
-                        const SizedBox(width: 8),
-                        _buildFiltroBoton('Salida'),
-                      ],
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          _buildFiltroBoton('Todos'),
+                          const SizedBox(width: 8),
+                          _buildFiltroBoton('Entrada'),
+                          const SizedBox(width: 8),
+                          _buildFiltroBoton('Salida'),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -192,19 +195,29 @@ class _HistorialScreenState extends State<HistorialScreen> {
                                         mainAxisAlignment:
                                             MainAxisAlignment.spaceBetween,
                                         children: [
-                                          Text(
-                                            item.placa,
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 16,
-                                              color: AppTheme.textDark,
+                                          Expanded(
+                                            child: Text(
+                                              item.placa,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 16,
+                                                color: AppTheme.textDark,
+                                              ),
                                             ),
                                           ),
-                                          Text(
-                                            '${item.fechaTexto} • ${item.horaTexto}',
-                                            style: const TextStyle(
-                                              fontSize: 12,
-                                              color: AppTheme.textMuted,
+                                          const SizedBox(width: 8),
+                                          Flexible(
+                                            child: Text(
+                                              '${item.fechaTexto} • ${item.horaTexto}',
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              textAlign: TextAlign.end,
+                                              style: const TextStyle(
+                                                fontSize: 12,
+                                                color: AppTheme.textMuted,
+                                              ),
                                             ),
                                           ),
                                         ],
@@ -214,6 +227,8 @@ class _HistorialScreenState extends State<HistorialScreen> {
                                         item.celdaTexto == 'N/A'
                                             ? item.tipoMovimiento
                                             : '${item.tipoMovimiento} • ${item.celdaTexto}',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                         style: const TextStyle(
                                           fontSize: 13,
                                           color: AppTheme.textMuted,
@@ -237,7 +252,8 @@ class _HistorialScreenState extends State<HistorialScreen> {
 
   Widget _buildFiltroBoton(String titulo) {
     final bool seleccionado = _filtroSeleccionado == titulo;
-    return Expanded(
+    return SizedBox(
+      width: 104,
       child: InkWell(
         onTap: () {
           setState(() {

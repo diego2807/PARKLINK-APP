@@ -86,49 +86,62 @@ class _UserTrafficLightScreenState extends State<UserTrafficLightScreen> {
     IconData icon,
     Color color,
   ) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-        decoration: BoxDecoration(
-          color: AppTheme.cardBg,
+    return SizedBox(
+      width: 210,
+      child: Card(
+        margin: EdgeInsets.zero,
+        elevation: 0,
+        shadowColor: Colors.black12,
+        shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          boxShadow: AppTheme.cardShadow,
-          border: Border.all(color: Colors.black.withOpacity(0.03)),
+          side: BorderSide(color: Colors.black.withOpacity(0.03)),
         ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+          decoration: BoxDecoration(
+            color: AppTheme.cardBg,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: AppTheme.cardShadow,
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: color, size: 22),
               ),
-              child: Icon(icon, color: color, size: 22),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    value,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.textDark,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      value,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.textDark,
+                      ),
                     ),
-                  ),
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: AppTheme.textMuted,
+                    Text(
+                      title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppTheme.textMuted,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -197,6 +210,8 @@ class _UserTrafficLightScreenState extends State<UserTrafficLightScreen> {
                                 const SizedBox(width: 8),
                                 const Text(
                                   'Estado en Tiempo Real',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
                                     color: Colors.white70,
                                     fontSize: 12,
@@ -208,6 +223,8 @@ class _UserTrafficLightScreenState extends State<UserTrafficLightScreen> {
                             const SizedBox(height: 6),
                             const Text(
                               'Ocupación General Redeban',
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.bold,
@@ -217,21 +234,25 @@ class _UserTrafficLightScreenState extends State<UserTrafficLightScreen> {
                           ],
                         ),
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: Text(
-                          '${_totalCeldas == 0 ? 0 : ((_totalOcupadas / _totalCeldas) * 100).round()}% Ocupado',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13,
+                      Flexible(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Text(
+                            '${_totalCeldas == 0 ? 0 : ((_totalOcupadas / _totalCeldas) * 100).round()}% Ocupado',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
                           ),
                         ),
                       ),
@@ -240,57 +261,63 @@ class _UserTrafficLightScreenState extends State<UserTrafficLightScreen> {
                 ),
                 const SizedBox(height: 20),
 
-                Row(
-                  children: [
-                    _buildSummaryCard(
-                      'Celdas Libres',
-                      '$_totalLibres',
-                      Icons.event_seat_rounded,
-                      AppTheme.success,
-                    ),
-                    const SizedBox(width: 12),
-                    _buildSummaryCard(
-                      'Celdas Ocupadas',
-                      '$_totalOcupadas',
-                      Icons.time_to_leave_rounded,
-                      AppTheme.accent,
-                    ),
-                    const SizedBox(width: 12),
-                    _buildSummaryCard(
-                      'Capacidad Total',
-                      '$_totalCeldas',
-                      Icons.local_parking_rounded,
-                      AppTheme.primary,
-                    ),
-                  ],
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      _buildSummaryCard(
+                        'Celdas Libres',
+                        '$_totalLibres',
+                        Icons.event_seat_rounded,
+                        AppTheme.success,
+                      ),
+                      const SizedBox(width: 12),
+                      _buildSummaryCard(
+                        'Celdas Ocupadas',
+                        '$_totalOcupadas',
+                        Icons.time_to_leave_rounded,
+                        AppTheme.accent,
+                      ),
+                      const SizedBox(width: 12),
+                      _buildSummaryCard(
+                        'Capacidad Total',
+                        '$_totalCeldas',
+                        Icons.local_parking_rounded,
+                        AppTheme.primary,
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 24),
 
-                Row(
-                  children: ['Todos', 'Carros', 'Motos'].map((filtro) {
-                    bool selected = _filtroVehiculo == filtro;
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: ChoiceChip(
-                        label: Text(filtro),
-                        selected: selected,
-                        selectedColor: AppTheme.primary,
-                        labelStyle: TextStyle(
-                          color: selected ? Colors.white : AppTheme.textDark,
-                          fontWeight: selected
-                              ? FontWeight.bold
-                              : FontWeight.normal,
-                          fontSize: 12,
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: ['Todos', 'Carros', 'Motos'].map((filtro) {
+                      bool selected = _filtroVehiculo == filtro;
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: ChoiceChip(
+                          label: Text(filtro),
+                          selected: selected,
+                          selectedColor: AppTheme.primary,
+                          labelStyle: TextStyle(
+                            color: selected ? Colors.white : AppTheme.textDark,
+                            fontWeight: selected
+                                ? FontWeight.bold
+                                : FontWeight.normal,
+                            fontSize: 12,
+                          ),
+                          backgroundColor: AppTheme.cardBg,
+                          onSelected: (bool isSelected) {
+                            if (isSelected) {
+                              setState(() => _filtroVehiculo = filtro);
+                            }
+                          },
                         ),
-                        backgroundColor: AppTheme.cardBg,
-                        onSelected: (bool isSelected) {
-                          if (isSelected) {
-                            setState(() => _filtroVehiculo = filtro);
-                          }
-                        },
-                      ),
-                    );
-                  }).toList(),
+                      );
+                    }).toList(),
+                  ),
                 ),
                 const SizedBox(height: 20),
 
@@ -324,46 +351,55 @@ class _UserTrafficLightScreenState extends State<UserTrafficLightScreen> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(8),
-                                    decoration: BoxDecoration(
-                                      color: colorEstado.withOpacity(0.12),
-                                      borderRadius: BorderRadius.circular(10),
+                              Expanded(
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: colorEstado.withOpacity(0.12),
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Icon(
+                                        _iconoZona(zona.celdas),
+                                        color: colorEstado,
+                                        size: 20,
+                                      ),
                                     ),
-                                    child: Icon(
-                                      _iconoZona(zona.celdas),
-                                      color: colorEstado,
-                                      size: 20,
+                                    const SizedBox(width: 12),
+                                    Text(
+                                      zona.zona,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                        color: AppTheme.textDark,
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Text(
-                                    zona.zona,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
-                                      color: AppTheme.textDark,
-                                    ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: colorEstado.withOpacity(0.12),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Text(
-                                  estadoTexto,
-                                  style: TextStyle(
-                                    color: colorEstado,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 11,
+                              const SizedBox(width: 8),
+                              Flexible(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: colorEstado.withOpacity(0.12),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    estadoTexto,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: colorEstado,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 11,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -385,21 +421,30 @@ class _UserTrafficLightScreenState extends State<UserTrafficLightScreen> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(
-                                'Celdas ocupadas: $ocupadas / $total',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: AppTheme.textMuted,
+                              Flexible(
+                                child: Text(
+                                  'Celdas ocupadas: $ocupadas / $total',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: AppTheme.textMuted,
+                                  ),
                                 ),
                               ),
-                              Text(
-                                '$libres celdas libres',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.bold,
-                                  color: libres > 0
-                                      ? colorEstado
-                                      : AppTheme.accent,
+                              Flexible(
+                                child: Text(
+                                  '$libres celdas libres',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  textAlign: TextAlign.end,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                    color: libres > 0
+                                        ? colorEstado
+                                        : AppTheme.accent,
+                                  ),
                                 ),
                               ),
                             ],

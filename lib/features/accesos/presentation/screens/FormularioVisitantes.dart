@@ -232,92 +232,98 @@ class _FormularioVisitantesScreenState
                   ),
                   const SizedBox(height: 14),
 
-                  Row(
-                    children: [
-                      Expanded(
-                        child: InkWell(
-                          onTap: () => setState(() => _tipoVehiculo = "Carro"),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            decoration: BoxDecoration(
-                              color: _tipoVehiculo == "Carro"
-                                  ? AppTheme.primary.withValues(alpha: 0.1)
-                                  : Colors.white,
-                              border: Border.all(
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 170,
+                          child: InkWell(
+                            onTap: () =>
+                                setState(() => _tipoVehiculo = "Carro"),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              decoration: BoxDecoration(
                                 color: _tipoVehiculo == "Carro"
-                                    ? AppTheme.primary
-                                    : Colors.grey[300]!,
-                                width: 1.5,
-                              ),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.directions_car_rounded,
+                                    ? AppTheme.primary.withValues(alpha: 0.1)
+                                    : Colors.white,
+                                border: Border.all(
                                   color: _tipoVehiculo == "Carro"
                                       ? AppTheme.primary
-                                      : AppTheme.textMuted,
+                                      : Colors.grey[300]!,
+                                  width: 1.5,
                                 ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  "Carro",
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.directions_car_rounded,
                                     color: _tipoVehiculo == "Carro"
                                         ? AppTheme.primary
                                         : AppTheme.textMuted,
                                   ),
-                                ),
-                              ],
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    "Carro",
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: _tipoVehiculo == "Carro"
+                                          ? AppTheme.primary
+                                          : AppTheme.textMuted,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: InkWell(
-                          onTap: () => setState(() => _tipoVehiculo = "Moto"),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            decoration: BoxDecoration(
-                              color: _tipoVehiculo == "Moto"
-                                  ? AppTheme.primary.withValues(alpha: 0.1)
-                                  : Colors.white,
-                              border: Border.all(
+                        const SizedBox(width: 12),
+                        SizedBox(
+                          width: 170,
+                          child: InkWell(
+                            onTap: () => setState(() => _tipoVehiculo = "Moto"),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              decoration: BoxDecoration(
                                 color: _tipoVehiculo == "Moto"
-                                    ? AppTheme.primary
-                                    : Colors.grey[300]!,
-                                width: 1.5,
-                              ),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.two_wheeler_rounded,
+                                    ? AppTheme.primary.withValues(alpha: 0.1)
+                                    : Colors.white,
+                                border: Border.all(
                                   color: _tipoVehiculo == "Moto"
                                       ? AppTheme.primary
-                                      : AppTheme.textMuted,
+                                      : Colors.grey[300]!,
+                                  width: 1.5,
                                 ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  "Moto",
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.two_wheeler_rounded,
                                     color: _tipoVehiculo == "Moto"
                                         ? AppTheme.primary
                                         : AppTheme.textMuted,
                                   ),
-                                ),
-                              ],
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    "Moto",
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: _tipoVehiculo == "Moto"
+                                          ? AppTheme.primary
+                                          : AppTheme.textMuted,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 14),
 

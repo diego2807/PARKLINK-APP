@@ -109,12 +109,16 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
               ),
             ),
             const SizedBox(width: 10),
-            const Text(
-              "Parklink Redeban",
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
+            const Expanded(
+              child: Text(
+                "Parklink Redeban",
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
               ),
             ),
           ],
@@ -173,61 +177,73 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(10),
-                                      decoration: BoxDecoration(
-                                        color: Colors.green.withValues(
-                                          alpha: 0.15,
-                                        ),
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: const Icon(
-                                        Icons.check_circle_rounded,
-                                        color: Colors.green,
-                                        size: 24,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 14),
-                                    Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        const Text(
-                                          "Disponibilidad en Tiempo Real",
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16,
-                                            color: AppTheme.textDark,
+                                Expanded(
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(10),
+                                        decoration: BoxDecoration(
+                                          color: Colors.green.withValues(
+                                            alpha: 0.15,
                                           ),
+                                          shape: BoxShape.circle,
                                         ),
-                                        Text(
-                                          "Estado: ${_estadoDisponibilidad}",
-                                          style: const TextStyle(
-                                            fontSize: 13,
-                                            color: AppTheme.textMuted,
-                                          ),
+                                        child: const Icon(
+                                          Icons.check_circle_rounded,
+                                          color: Colors.green,
+                                          size: 24,
                                         ),
-                                      ],
-                                    ),
-                                  ],
+                                      ),
+                                      const SizedBox(width: 14),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            const Text(
+                                              "Disponibilidad en Tiempo Real",
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 16,
+                                                color: AppTheme.textDark,
+                                              ),
+                                            ),
+                                            Text(
+                                              "Estado: ${_estadoDisponibilidad}",
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(
+                                                fontSize: 13,
+                                                color: AppTheme.textMuted,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 14,
-                                    vertical: 6,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: AppTheme.primary,
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: Text(
-                                    activeReservation['spot'],
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 13,
+                                Flexible(
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 14,
+                                      vertical: 6,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.primary,
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: Text(
+                                      activeReservation['spot'],
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -237,29 +253,38 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Row(
-                                  children: [
-                                    const Icon(
-                                      Icons.schedule,
-                                      size: 16,
+                                Expanded(
+                                  child: Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.schedule,
+                                        size: 16,
+                                        color: AppTheme.textMuted,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        activeReservation['schedule'],
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppTheme.textDark,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Flexible(
+                                  child: Text(
+                                    activeReservation['location'],
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    textAlign: TextAlign.end,
+                                    style: const TextStyle(
+                                      fontSize: 13,
                                       color: AppTheme.textMuted,
                                     ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      activeReservation['schedule'],
-                                      style: const TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w600,
-                                        color: AppTheme.textDark,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                Text(
-                                  activeReservation['location'],
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    color: AppTheme.textMuted,
                                   ),
                                 ),
                               ],
@@ -281,35 +306,44 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Row(
-                              children: [
-                                Icon(
-                                  Icons.info_outline_rounded,
-                                  color: AppTheme.textMuted,
-                                  size: 28,
-                                ),
-                                SizedBox(width: 14),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      "Sin disponibilidad actual",
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16,
-                                        color: AppTheme.textDark,
-                                      ),
+                            const Expanded(
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.info_outline_rounded,
+                                    color: AppTheme.textMuted,
+                                    size: 28,
+                                  ),
+                                  SizedBox(width: 14),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          "Sin disponibilidad actual",
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
+                                            color: AppTheme.textDark,
+                                          ),
+                                        ),
+                                        Text(
+                                          "Todas las celdas de las zonas están ocupadas.",
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            color: AppTheme.textMuted,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                    Text(
-                                      "Todas las celdas de las zonas están ocupadas.",
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        color: AppTheme.textMuted,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
+                                  ),
+                                ],
+                              ),
                             ),
                             ElevatedButton(
                               style: ElevatedButton.styleFrom(
@@ -457,6 +491,8 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
                 children: [
                   Text(
                     title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
@@ -466,6 +502,8 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
                   const SizedBox(height: 2),
                   Text(
                     subtitle,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontSize: 11,
                       color: AppTheme.textMuted,

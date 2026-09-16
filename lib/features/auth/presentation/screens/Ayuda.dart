@@ -25,47 +25,66 @@ class AyudaScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Tarjeta de bienvenida
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primary.withValues(alpha: 0.1),
+                Card(
+                  margin: EdgeInsets.zero,
+                  elevation: 0,
+                  shadowColor: Colors.black12,
+                  shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
+                    side: BorderSide(
                       color: AppTheme.primary.withValues(alpha: 0.2),
                     ),
                   ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: AppTheme.primary,
-                          borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primary,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(
+                            Icons.help_outline_rounded,
+                            color: Colors.white,
+                            size: 30,
+                          ),
                         ),
-                        child: const Icon(Icons.help_outline_rounded, color: Colors.white, size: 30),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: const [
-                            Text(
-                              "¿Cómo podemos ayudarte?",
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 18,
-                                color: AppTheme.textDark,
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: const [
+                              Text(
+                                "¿Cómo podemos ayudarte?",
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 18,
+                                  color: AppTheme.textDark,
+                                ),
                               ),
-                            ),
-                            SizedBox(height: 4),
-                            Text(
-                              "Encuentra respuestas rápidas a los problemas frecuentes del sistema de parqueadero.",
-                              style: TextStyle(fontSize: 13, color: AppTheme.textMuted),
-                            ),
-                          ],
+                              SizedBox(height: 4),
+                              Text(
+                                "Encuentra respuestas rápidas a los problemas frecuentes del sistema de parqueadero.",
+                                maxLines: 3,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: AppTheme.textMuted,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -82,17 +101,21 @@ class AyudaScreen extends StatelessWidget {
 
                 _buildFaqItem(
                   pregunta: "¿Cómo registrar un vehículo si soy visitante?",
-                  respuesta: "Dirígete al módulo de 'Registros de Visitantes', completa el nombre, documento y placa, y guarda el acceso.",
+                  respuesta:
+                      "Dirígete al módulo de 'Registros de Visitantes', completa el nombre, documento y placa, y guarda el acceso.",
                 ),
                 const SizedBox(height: 10),
                 _buildFaqItem(
-                  pregunta: "¿Qué hago si una placa no aparece al registrar salida?",
-                  respuesta: "Verifica que la placa esté escrita sin espacios extra o revisa el historial de movimientos.",
+                  pregunta:
+                      "¿Qué hago si una placa no aparece al registrar salida?",
+                  respuesta:
+                      "Verifica que la placa esté escrita sin espacios extra o revisa el historial de movimientos.",
                 ),
                 const SizedBox(height: 10),
                 _buildFaqItem(
                   pregunta: "¿Cuál es el límite de vehículos asociados?",
-                  respuesta: "Cada usuario principal puede gestionar hasta un máximo de 3 vehículos vinculados.",
+                  respuesta:
+                      "Cada usuario principal puede gestionar hasta un máximo de 3 vehículos vinculados.",
                 ),
               ],
             ),
@@ -103,32 +126,48 @@ class AyudaScreen extends StatelessWidget {
   }
 
   Widget _buildFaqItem({required String pregunta, required String respuesta}) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.grey[200]!, width: 1),
+    return Card(
+      margin: EdgeInsets.zero,
+      elevation: 0,
+      shadowColor: Colors.black12,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: Colors.grey[200]!),
       ),
-      child: ExpansionTile(
-        title: Text(
-          pregunta,
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 14,
-            color: AppTheme.textDark,
-          ),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
         ),
-        iconColor: AppTheme.primary,
-        collapsedIconColor: AppTheme.textMuted,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            child: Text(
-              respuesta,
-              style: const TextStyle(fontSize: 13, color: AppTheme.textMuted, height: 1.4),
+        child: ExpansionTile(
+          title: Text(
+            pregunta,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+              color: AppTheme.textDark,
             ),
           ),
-        ],
+          iconColor: AppTheme.primary,
+          collapsedIconColor: AppTheme.textMuted,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Text(
+                respuesta,
+                maxLines: 6,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: AppTheme.textMuted,
+                  height: 1.4,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

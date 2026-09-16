@@ -183,33 +183,32 @@ class _FormularioSalidaScreenState extends State<FormularioSalidaScreen> {
 
                 Form(
                   key: _formKey,
-                  child: Row(
+                  child: Column(
                     children: [
-                      Expanded(
-                        child: TextFormField(
-                          controller: _placaController,
-                          textCapitalization: TextCapitalization.characters,
-                          decoration: InputDecoration(
-                            labelText: "Placa del Vehículo",
-                            hintText: "ej. ABC-123",
-                            prefixIcon: const Icon(Icons.badge_outlined),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            filled: true,
-                            fillColor: Colors.white,
+                      TextFormField(
+                        controller: _placaController,
+                        textCapitalization: TextCapitalization.characters,
+                        decoration: InputDecoration(
+                          labelText: "Placa del Vehículo",
+                          hintText: "ej. ABC-123",
+                          prefixIcon: const Icon(Icons.badge_outlined),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                          validator: (val) {
-                            if (val == null || val.trim().isEmpty) {
-                              return "Ingresa una placa para buscar";
-                            }
-                            return null;
-                          },
+                          filled: true,
+                          fillColor: Colors.white,
                         ),
+                        validator: (val) {
+                          if (val == null || val.trim().isEmpty) {
+                            return "Ingresa una placa para buscar";
+                          }
+                          return null;
+                        },
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(height: 12),
                       SizedBox(
-                        height: 56,
+                        width: double.infinity,
+                        height: 52,
                         child: ElevatedButton.icon(
                           onPressed: _buscando ? null : _buscarVehiculo,
                           style: ElevatedButton.styleFrom(
@@ -277,60 +276,75 @@ class _FormularioSalidaScreenState extends State<FormularioSalidaScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    color: Colors.green.withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: const Icon(
-                                    Icons.directions_car_rounded,
-                                    color: Colors.green,
-                                    size: 28,
-                                  ),
-                                ),
-                                const SizedBox(width: 14),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      _vehiculoEncontrado!["placa"]!,
-                                      style: const TextStyle(
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.bold,
-                                        color: AppTheme.textDark,
+                            Expanded(
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: Colors.green.withValues(
+                                        alpha: 0.1,
                                       ),
+                                      borderRadius: BorderRadius.circular(12),
                                     ),
-                                    Text(
-                                      _vehiculoEncontrado!["marca"]!,
-                                      style: const TextStyle(
-                                        fontSize: 13,
-                                        color: AppTheme.textMuted,
-                                      ),
+                                    child: const Icon(
+                                      Icons.directions_car_rounded,
+                                      color: Colors.green,
+                                      size: 28,
                                     ),
-                                  ],
-                                ),
-                              ],
+                                  ),
+                                  const SizedBox(width: 14),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          _vehiculoEncontrado!["placa"]!,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.bold,
+                                            color: AppTheme.textDark,
+                                          ),
+                                        ),
+                                        Text(
+                                          _vehiculoEncontrado!["marca"]!,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            fontSize: 13,
+                                            color: AppTheme.textMuted,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.green.withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: const Text(
-                                "Activo en parqueadero",
-                                style: TextStyle(
-                                  color: Colors.green,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 11,
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.green.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: const Text(
+                                  "Activo en parqueadero",
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: Colors.green,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 11,
+                                  ),
                                 ),
                               ),
                             ),
@@ -347,11 +361,16 @@ class _FormularioSalidaScreenState extends State<FormularioSalidaScreen> {
                               "Hora de Ingreso:",
                               style: TextStyle(color: AppTheme.textMuted),
                             ),
-                            Text(
-                              _vehiculoEncontrado!["horaEntrada"]!,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: AppTheme.textDark,
+                            Flexible(
+                              child: Text(
+                                _vehiculoEncontrado!["horaEntrada"]!,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.end,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.textDark,
+                                ),
                               ),
                             ),
                           ],
@@ -364,11 +383,16 @@ class _FormularioSalidaScreenState extends State<FormularioSalidaScreen> {
                               "Ubicación asignada:",
                               style: TextStyle(color: AppTheme.textMuted),
                             ),
-                            Text(
-                              _vehiculoEncontrado!["espacio"]!,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: AppTheme.textDark,
+                            Flexible(
+                              child: Text(
+                                _vehiculoEncontrado!["espacio"]!,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.end,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.textDark,
+                                ),
                               ),
                             ),
                           ],

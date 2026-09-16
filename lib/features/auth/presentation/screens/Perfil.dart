@@ -104,76 +104,84 @@ class _PerfilScreenState extends State<PerfilScreen> {
                     ),
                   )
                 else
-                  Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.03),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
+                  Card(
+                    margin: EdgeInsets.zero,
+                    elevation: 0,
+                    shadowColor: Colors.black12,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      side: BorderSide(color: Colors.grey[200]!),
                     ),
-                    child: Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 36,
-                          backgroundColor: AppTheme.primary.withValues(
-                            alpha: 0.15,
-                          ),
-                          child: Text(
-                            _nombre.trim().isEmpty
-                                ? 'PL'
-                                : _nombre
-                                      .split(' ')
-                                      .take(2)
-                                      .map((e) => e[0])
-                                      .join()
-                                      .toUpperCase(),
-                            style: const TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: AppTheme.primary,
+                    child: Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 36,
+                            backgroundColor: AppTheme.primary.withValues(
+                              alpha: 0.15,
+                            ),
+                            child: Text(
+                              _nombre.trim().isEmpty
+                                  ? 'PL'
+                                  : _nombre
+                                        .split(' ')
+                                        .take(2)
+                                        .map((e) => e[0])
+                                        .join()
+                                        .toUpperCase(),
+                              style: const TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.primary,
+                              ),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 20),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                _nombre,
-                                style: const TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppTheme.textDark,
+                          const SizedBox(width: 20),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _nombre,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppTheme.textDark,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                _rol,
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  color: AppTheme.primary,
-                                  fontWeight: FontWeight.w600,
+                                const SizedBox(height: 4),
+                                Text(
+                                  _rol,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: AppTheme.primary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                _correo,
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  color: AppTheme.textMuted,
+                                const SizedBox(height: 2),
+                                Text(
+                                  _correo,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: AppTheme.textMuted,
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 const SizedBox(height: 24),
@@ -189,26 +197,34 @@ class _PerfilScreenState extends State<PerfilScreen> {
                 const SizedBox(height: 12),
 
                 // Campos de información
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
+                Card(
+                  margin: EdgeInsets.zero,
+                  elevation: 0,
+                  shadowColor: Colors.black12,
+                  shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.grey[200]!, width: 1),
+                    side: BorderSide(color: Colors.grey[200]!),
                   ),
-                  child: Column(
-                    children: [
-                      _buildInfoTile(
-                        icon: Icons.phone_outlined,
-                        titulo: "Teléfono",
-                        valor: _telefono,
-                      ),
-                      const Divider(height: 1, indent: 56),
-                      _buildInfoTile(
-                        icon: Icons.business_outlined,
-                        titulo: "Empresa / Área",
-                        valor: "Redeban - Desarrollo de Software",
-                      ),
-                    ],
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Column(
+                      children: [
+                        _buildInfoTile(
+                          icon: Icons.phone_outlined,
+                          titulo: "Teléfono",
+                          valor: _telefono,
+                        ),
+                        const Divider(height: 1, indent: 56),
+                        _buildInfoTile(
+                          icon: Icons.business_outlined,
+                          titulo: "Empresa / Área",
+                          valor: "Redeban - Desarrollo de Software",
+                        ),
+                      ],
+                    ),
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -224,43 +240,56 @@ class _PerfilScreenState extends State<PerfilScreen> {
                 const SizedBox(height: 12),
 
                 // Opciones de configuración y notificaciones
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
+                Card(
+                  margin: EdgeInsets.zero,
+                  elevation: 0,
+                  shadowColor: Colors.black12,
+                  shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.grey[200]!, width: 1),
+                    side: BorderSide(color: Colors.grey[200]!),
                   ),
-                  child: SwitchListTile(
-                    secondary: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppTheme.primary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(
-                        Icons.notifications_outlined,
-                        color: AppTheme.primary,
-                      ),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
                     ),
-                    title: const Text(
-                      "Notificaciones de acceso",
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                        color: AppTheme.textDark,
+                    child: SwitchListTile(
+                      secondary: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.notifications_outlined,
+                          color: AppTheme.primary,
+                        ),
                       ),
+                      title: const Text(
+                        "Notificaciones de acceso",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                          color: AppTheme.textDark,
+                        ),
+                      ),
+                      subtitle: const Text(
+                        "Recibir alertas cuando tus vehículos ingresen o salgan",
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.textMuted,
+                        ),
+                      ),
+                      value: _notificacionesActivas,
+                      activeThumbColor: AppTheme.primary,
+                      onChanged: (bool value) {
+                        setState(() {
+                          _notificacionesActivas = value;
+                        });
+                      },
                     ),
-                    subtitle: const Text(
-                      "Recibir alertas cuando tus vehículos ingresen o salgan",
-                      style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
-                    ),
-                    value: _notificacionesActivas,
-                    activeColor: AppTheme.primary,
-                    onChanged: (bool value) {
-                      setState(() {
-                        _notificacionesActivas = value;
-                      });
-                    },
                   ),
                 ),
                 const SizedBox(height: 32),
@@ -322,6 +351,8 @@ class _PerfilScreenState extends State<PerfilScreen> {
               children: [
                 Text(
                   titulo,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontSize: 12,
                     color: AppTheme.textMuted,
@@ -330,6 +361,8 @@ class _PerfilScreenState extends State<PerfilScreen> {
                 const SizedBox(height: 2),
                 Text(
                   valor,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.bold,

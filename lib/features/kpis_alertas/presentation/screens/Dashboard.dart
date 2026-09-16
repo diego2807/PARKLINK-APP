@@ -91,29 +91,35 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 color: Colors.white,
                 border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
               ),
-              child: Row(
-                children: [
-                  if (_error.isEmpty) ...[
-                    _summaryChip(
-                      'Celdas libres',
-                      '$_celdasDisponibles',
-                      const Color(0xFF10B981),
-                    ),
-                    const SizedBox(width: 10),
-                    _summaryChip(
-                      'Alertas',
-                      '$_alertasActivas',
-                      const Color(0xFFEF4444),
-                    ),
-                  ] else
-                    Expanded(
-                      child: Text(
-                        _error,
-                        style: const TextStyle(color: Colors.red, fontSize: 12),
-                        overflow: TextOverflow.ellipsis,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    if (_error.isEmpty) ...[
+                      _summaryChip(
+                        'Celdas libres',
+                        '$_celdasDisponibles',
+                        const Color(0xFF10B981),
                       ),
-                    ),
-                ],
+                      const SizedBox(width: 10),
+                      _summaryChip(
+                        'Alertas',
+                        '$_alertasActivas',
+                        const Color(0xFFEF4444),
+                      ),
+                    ] else
+                      Expanded(
+                        child: Text(
+                          _error,
+                          style: const TextStyle(
+                            color: Colors.red,
+                            fontSize: 12,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                  ],
+                ),
               ),
             )
           else
@@ -255,6 +261,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         children: [
           Text(
             label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               color: Color(0xFF475569),
               fontSize: 11,
@@ -264,6 +272,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           const SizedBox(width: 6),
           Text(
             value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
               color: color,
               fontSize: 12,

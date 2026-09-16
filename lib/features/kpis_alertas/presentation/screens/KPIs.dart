@@ -249,22 +249,31 @@ class _AdminKpisScreenState extends State<AdminKpisScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
-                          'Estado General de Celdas',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF0F172A),
+                        const Expanded(
+                          child: Text(
+                            'Estado General de Celdas',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF0F172A),
+                            ),
                           ),
                         ),
-                        Text(
-                          'Capacidad Total: ${capacidad == 0 ? 'Sin datos' : '$capacidad espacios'}',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.grey.shade600,
+                        const SizedBox(width: 12),
+                        Flexible(
+                          child: Text(
+                            'Capacidad Total: ${capacidad == 0 ? 'Sin datos' : '$capacidad espacios'}',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.end,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.grey.shade600,
+                            ),
                           ),
                         ),
                       ],
@@ -322,7 +331,7 @@ class _AdminKpisScreenState extends State<AdminKpisScreen> {
       children: [
         Expanded(child: _buildPeriodDropdown()),
         const SizedBox(width: 12),
-        _buildLiveBadge(),
+        Flexible(child: _buildLiveBadge()),
       ],
     );
   }
@@ -448,6 +457,8 @@ class _AdminKpisScreenState extends State<AdminKpisScreen> {
             const SizedBox(height: 6),
             Text(
               subtext,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
@@ -473,22 +484,26 @@ class _AdminKpisScreenState extends State<AdminKpisScreen> {
       children: [
         Icon(icon, color: color, size: 22),
         const SizedBox(width: 10),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
-            ),
-            Text(
-              value,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF0F172A),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
               ),
-            ),
-          ],
+              Text(
+                value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF0F172A),
+                ),
+              ),
+            ],
+          ),
         ),
       ],
     );
@@ -505,6 +520,8 @@ class _KpiHeaderTitles extends StatelessWidget {
       children: [
         Text(
           'Rendimiento General del Parqueadero',
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
           style: TextStyle(
             fontSize: 22,
             fontWeight: FontWeight.bold,
@@ -514,6 +531,8 @@ class _KpiHeaderTitles extends StatelessWidget {
         SizedBox(height: 4),
         Text(
           'Métricas analíticas operativas en tiempo real para empleados y visitantes.',
+          maxLines: 3,
+          overflow: TextOverflow.ellipsis,
           style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
         ),
       ],
